@@ -68,7 +68,7 @@ def PlotComponent(ax, com: str, data: dict, delta: float, ppt: list, mppt: list,
 
     
 
-def _plot_time(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: list, delta: float, yh1: list, yh2: list, yh3):
+def PlotTime(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: list, delta: float, yh1: list, yh2: list, yh3):
     '''
     Plot picked phases (and manual picks) in time domain
 
@@ -99,172 +99,16 @@ def _plot_time(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: li
     # plot E component
     ax = fig.add_subplot(spec[0, 0])
     PlotComponent(ax, come, data, delta, ppt, mppt, pst, mpst, figf.split("/")[-1])
-    # try:
-    #     ax.plot(data[come], 'k', linewidth = 0.8)
-    # except:
-    #     pass
-    # x = np.arange(60/delta)
-    # plt.xlim(0, 60/delta) 
-    # ymin, ymax = ax.get_ylim()
-    # plt.title(figf.split("/")[-1])
-
-    # plt.ylabel('Amplitude\nCounts')
-    # plt.xticks(ticks=np.arange(0,60/delta+1, 10/delta), labels=np.arange(0,60+1, 10))
-
-    # plt.rcParams["figure.figsize"] = (8,6)
-    # legend_properties = {'weight':'bold'}
-    
-    # pl = sl = mpl = msl = None        
-    # if len(ppt) > 0 and come != None:
-    #     for ipt, pt in enumerate(ppt):
-    #         if pt and ipt == 0:
-    #             pl = plt.vlines(int(pt), ymin, ymax, color='c', linewidth=2, label='Picked P')
-    #         elif pt and ipt > 0:
-    #             pl = plt.vlines(int(pt), ymin, ymax, color='c', linewidth=2)
-        
-    #     for pt in mppt:
-    #         mpl = plt.vlines(int(pt), ymin, ymax, color='orange', linestyles='dashed', linewidth=2)
-    
-    # if len(pst) > 0 and come != None: 
-    #     for ist, st in enumerate(pst): 
-    #         if st and ist == 0:
-    #             sl = plt.vlines(int(st), ymin, ymax, color='m', linewidth=2, label='Picked S')
-    #         elif st and ist > 0:
-    #             sl = plt.vlines(int(st), ymin, ymax, color='m', linewidth=2)
-        
-    #     for pt in mpst:
-    #         msl = plt.vlines(int(pt), ymin, ymax, color='springgreen', linestyles='dashed', linewidth=2)
-                
-    # if (pl or sl) and ( not msl and not mpl):    
-    #     box = ax.get_position()
-    #     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    #     custom_lines = [Line2D([0], [0], color='k', lw=0),
-    #                     Line2D([0], [0], color='c', lw=2),
-    #                     Line2D([0], [0], color='m', lw=2)]
-    #     plt.legend(custom_lines, [come[2], 'Picked P', 'Picked S'], 
-    #                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
-    #                 fancybox=True, shadow=True)
-
-    # if (pl or sl) and ( msl or mpl):    
-    #     box = ax.get_position()
-    #     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    #     custom_lines = [Line2D([0], [0], color='k', lw=0),
-    #                     Line2D([0], [0], color='c', lw=2),
-    #                     Line2D([0], [0], color='m', lw=2),
-    #                     Line2D([0], [0], color='orange', lw=2, linestyle='dashed'),
-    #                     Line2D([0], [0], color='springgreen', lw=2, linestyle='dashed')]
-    #     plt.legend(custom_lines, [come[2], 'Picked P', 'Picked S', 'Manual pick P', 'Manual pick S'], 
-    #                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
-    #                 fancybox=True, shadow=True)
 
     # plot N component                    
     ax = fig.add_subplot(spec[1, 0])
     PlotComponent(ax, comn, data, delta, ppt, mppt, pst, mpst, figf.split("/")[-1])
-    # try: 
-    #     plt.plot(data[comn] , 'k', linewidth = 0.8)
-    # except:
-    #     pass
-    # plt.xlim(0, 60/delta)            
-    # plt.ylabel('Amplitude\nCounts')            
-    # plt.xticks(ticks=np.arange(0,60/delta+1, 10/delta), labels=np.arange(0,60+1, 10))
-    # ymin, ymax = ax.get_ylim()
-    # if len(ppt) > 0 and comn != None:
-    #     for ipt, pt in enumerate(ppt):
-    #         if pt and ipt == 0:
-    #             pl = plt.vlines(int(pt), ymin, ymax, color='c', linewidth=2, label='Picked P')
-    #         elif pt and ipt > 0:
-    #             pl = plt.vlines(int(pt), ymin, ymax, color='c', linewidth=2)
-        
-    #     for pt in mppt:
-    #         mpl = plt.vlines(int(pt), ymin, ymax, color='orange', linestyles='dashed', linewidth=2)
-                
-    # if len(pst) > 0 and comn != None:
-    #     for ist, st in enumerate(pst): 
-    #         if st and ist == 0:
-    #             sl = plt.vlines(int(st), ymin, ymax, color='m', linewidth=2, label='Picked S')
-    #         elif st and ist > 0:
-    #             sl = plt.vlines(int(st), ymin, ymax, color='m', linewidth=2)
-        
-    #     for pt in mpst:
-    #         msl = plt.vlines(int(pt), ymin, ymax, color='springgreen', linestyles='dashed', linewidth=2)
-
-    # if (pl or sl) and ( not msl and not mpl): 
-    #     box = ax.get_position()
-    #     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    #     custom_lines = [Line2D([0], [0], color='k', lw=0),
-    #                     Line2D([0], [0], color='c', lw=2),
-    #                     Line2D([0], [0], color='m', lw=2)]
-    #     plt.legend(custom_lines, [comn[2], 'Picked P', 'Picked S'], 
-    #                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
-    #                 fancybox=True, shadow=True)
-
-    # if (pl or sl) and ( msl or mpl):    
-    #     box = ax.get_position()
-    #     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    #     custom_lines = [Line2D([0], [0], color='k', lw=0),
-    #                     Line2D([0], [0], color='c', lw=2),
-    #                     Line2D([0], [0], color='m', lw=2),
-    #                     Line2D([0], [0], color='orange', lw=2, linestyle='dashed'),
-    #                     Line2D([0], [0], color='springgreen', lw=2, linestyle='dashed')]
-    #     plt.legend(custom_lines, [comn[2], 'Picked P', 'Picked S', 'Manual pick P', 'Manual pick S'], 
-    #                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
-    #                 fancybox=True, shadow=True)
-
+    
     # Plot Z component
     ax = fig.add_subplot(spec[2, 0]) 
     PlotComponent(ax, comz, data, delta, ppt, mppt, pst, mpst, figf.split("/")[-1])
-    # try:
-    #     plt.plot(data[comz], 'k', linewidth = 0.8) 
-    # except:
-    #     pass
-    # plt.xlim(0, 60/delta)                    
-    # plt.ylabel('Amplitude\nCounts')
-    
-    # ax.set_xticks([])
-    # ymin, ymax = ax.get_ylim()
 
-    # if len(ppt) > 0 and comz != None:    
-    #     for ipt, pt in enumerate(ppt):
-    #         if pt and ipt == 0:
-    #             pl = plt.vlines(int(pt), ymin, ymax, color='c', linewidth=2, label='Picked P')
-    #         elif pt and ipt > 0:
-    #             pl = plt.vlines(int(pt), ymin, ymax, color='c', linewidth=2)
-    
-    #     for pt in mppt:
-    #         mpl = plt.vlines(int(pt), ymin, ymax, color='orange', linestyles='dashed', linewidth=2)
-                
-    # if len(pst) > 0 and comz != None:
-    #     for ist, st in enumerate(pst): 
-    #         if st and ist == 0:
-    #             sl = plt.vlines(int(st), ymin, ymax, color='m', linewidth=2, label='Picked S')
-    #         elif st and ist > 0:
-    #             sl = plt.vlines(int(st), ymin, ymax, color='m', linewidth=2)
-
-    #     for pt in mpst:
-    #         msl = plt.vlines(int(pt), ymin, ymax, color='springgreen', linestyles='dashed', linewidth=2)
-                
-    # if (pl or sl) and ( not msl and not mpl):       
-    #     box = ax.get_position()
-    #     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    #     custom_lines = [Line2D([0], [0], color='k', lw=0),
-    #                     Line2D([0], [0], color='c', lw=2),
-    #                     Line2D([0], [0], color='m', lw=2)]
-    #     plt.legend(custom_lines, [comz[2], 'Picked P', 'Picked S'], 
-    #                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
-    #                 fancybox=True, shadow=True)       
-
-    # if (pl or sl) and ( msl or mpl):    
-    #     box = ax.get_position()
-    #     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    #     custom_lines = [Line2D([0], [0], color='k', lw=0),
-    #                     Line2D([0], [0], color='c', lw=2),
-    #                     Line2D([0], [0], color='m', lw=2),
-    #                     Line2D([0], [0], color='orange', lw=2, linestyle='dashed'),
-    #                     Line2D([0], [0], color='springgreen', lw=2, linestyle='dashed')]
-    #     plt.legend(custom_lines, [comz[2], 'Picked P', 'Picked S', 'Manual pick P', 'Manual pick S'], 
-    #                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
-    #                 fancybox=True, shadow=True)
-
+    # Plot probability
     ax = fig.add_subplot(spec[3, 0])
     x = np.linspace(0, len(yh1), len(yh1), endpoint=True)
                         
@@ -285,132 +129,11 @@ def _plot_time(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: li
     axes = plt.gca()
     axes.yaxis.grid(color='lightgray')
         
-    font = {'family': 'serif',
-                'color': 'dimgrey',
-                'style': 'italic',
-                'stretch': 'condensed',
-                'weight': 'normal',
-                'size': 12,
-                }
-
-    # plt.text(6500, 0.5, 'EQTransformer', fontdict=font)
-        
     fig.tight_layout()
     fig.savefig(figf + '.pdf', format='pdf') 
     plt.close(fig)
     plt.clf()
     return
-
-
-
-def PlotTime(inputdir, datadir, figdir: str, mpickdir, number_of_plots=10):
-    '''
-    Plot waveform and P and S arrivals in time domain
-
-    Parameters
-    ----------
-    inputdir: str
-        path to the detection result directory
-    datadir: str
-        path to the data directory
-    number_of_plots: int
-        number of plotting figures for each statioin
-    '''
-
-    if os.path.isdir(figdir) == True:
-        shutil.rmtree(figdir)  
-    os.makedirs(figdir)
-
-    sta_name = sta.split('_')[0]
-    stadir = os.path.join(inputdir, sta)
-    if os.path.isdir(os.path.join(outdir, sta_name)) == False:
-        os.mkdir(os.path.join(outdir, sta_name))
-
-    # Load probability        
-    prob_file = os.path.join(stadir, "prediction_probabilities.hdf5")
-    PROB = h5py.File(prob_file, 'r')
-    timeslot = list(PROB.keys())
-    if len(timeslot) < number_of_plots:
-        plot_index = list(range(len(timeslot)))
-    else:
-        # plot_index = random.sample(range(len(timeslot)), number_of_plots) 
-        plot_index = range(13470, 13480)
-    
-    # Load prediction
-    pred_file = os.path.join(stadir, "X_prediction_results.csv")
-    try:
-        eventt, parrival, sarrival = np.loadtxt(pred_file, unpack = True, dtype = str, delimiter = ',', usecols = (7, 11, 15), skiprows=1)
-    except ValueError:
-        return
-    t_event = [''] * len(eventt)
-    t_parrival = [''] * len(eventt)
-    t_sarrival = [''] * len(eventt)
-    for i in range(len(eventt)):
-        if eventt[i] != '':
-            t_event[i] = UTCDateTime('T'.join(eventt[i].split(' ')))
-        if parrival[i] != '':
-            t_parrival[i] = UTCDateTime('T'.join(parrival[i].split(' ')))
-        if sarrival[i] != '':
-            t_sarrival[i] = UTCDateTime('T'.join(sarrival[i].split(' ')))
-
-    # Load data file
-    data_time = {}
-    for f in os.listdir(os.path.join(datadir, sta_name)):
-        st = f.split('__')[1]
-        cha = f.split('__')[0].split('.')[-1]
-        if st not in data_time.keys():
-            data_time[st] = {}
-        if cha not in data_time[st].keys():
-            data_time[st][cha] = f
-                    
-    for ix in plot_index:
-        starttime = UTCDateTime(timeslot[ix])
-        endtime = starttime + 60
-        mppt = []
-        mpst = []
-        ppt = []
-        pst = []
-
-        # Get data
-        data = {}
-        for t in data_time.keys():
-            if starttime >= UTCDateTime(t) and endtime <= UTCDateTime(t) + 60 * 60 * 24 * 30:
-                for c in data_time[t].keys():
-                    tempstream = obspy.read(os.path.join(datadir, sta_name, data_time[t][c]))
-                    for tr in tempstream:
-                        if starttime >= tr.stats.starttime and starttime <= tr.stats.endtime:
-                            tr.detrend('demean')
-                            tr.filter(type='bandpass', freqmin = 1.0, freqmax = 45, corners=2, zerophase=True)
-                            tr.taper(max_percentage=0.001, type='cosine', max_length=2) 
-                            delta = tr.stats.delta
-                            be = int((starttime - tr.stats.starttime) / delta)
-                            ne = int((starttime - tr.stats.starttime + 60) / delta)
-                            data[c] = tr.data[be:ne+1]
-                            break
-
-        # Find manual pick in the time interval
-        if sta_name in mpickdir.keys():
-            for man_p in mpickdir[sta_name]['P']:
-                if man_p >= starttime and man_p <= endtime:
-                    mppt.append((man_p - starttime) / delta)
-            for man_p in mpickdir[sta_name]['S']:
-                if man_p >= starttime and man_p <= endtime:
-                    mpst.append((man_p - starttime) / delta)
-
-        # Find predict arrival in the time interval
-        for p in t_parrival:
-            if p == '':
-                continue
-            if p >= starttime and p <= endtime:
-                ppt.append((p - starttime) / delta)
-        for s in t_sarrival:
-            if s == '':
-                continue
-            if s >= starttime and s <= endtime:
-                pst.append((s - starttime) / delta)
-
-        fig_name = os.path.join(outdir, sta_name, f'{sta_name}:{timeslot[ix]}')
-        _plot_time(fig_name, data, mppt, mpst, ppt, pst, delta, PROB[timeslot[ix]]['Earthquake'], PROB[timeslot[ix]]['P_arrival'], PROB[timeslot[ix]]['S_arrival'])
 
 
 
