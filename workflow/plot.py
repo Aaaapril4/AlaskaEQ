@@ -1,9 +1,6 @@
-import h5py
-import random
 from obspy import UTCDateTime
 import obspy
 import os
-import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -14,7 +11,6 @@ def PlotComponent(ax, com: str, data: dict, delta: float, ppt: list, mppt: list,
         ax.plot(data[com], 'k', linewidth = 0.8)
     except:
         pass
-    x = np.arange(60/delta)
     ax.set_xlim(0, 60/delta) 
     ymin, ymax = ax.get_ylim()
     ax.set_title(title)
@@ -68,7 +64,7 @@ def PlotComponent(ax, com: str, data: dict, delta: float, ppt: list, mppt: list,
 
     
 
-def PlotTime(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: list, delta: float, yh1: list, yh2: list, yh3):
+def PlotTime(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: list, delta: float, yh1: list, yh2: list, yh3: list):
     '''
     Plot picked phases (and manual picks) in time domain
 
@@ -111,10 +107,10 @@ def PlotTime(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: list
     # Plot probability
     ax = fig.add_subplot(spec[3, 0])
     x = np.linspace(0, len(yh1), len(yh1), endpoint=True)
-                        
-    plt.plot(x, np.array(yh1), '--', color='g', alpha = 0.5, linewidth=1.5, label='Earthquake')
-    plt.plot(x, np.array(yh2), '--', color='b', alpha = 0.5, linewidth=1.5, label='P_arrival')
-    plt.plot(x, np.array(yh3), '--', color='r', alpha = 0.5, linewidth=1.5, label='S_arrival')
+    if yh1 != None: 
+        plt.plot(x, np.array(yh1), '--', color='g', alpha = 0.5, linewidth=1.5, label='Earthquake')
+        plt.plot(x, np.array(yh2), '--', color='b', alpha = 0.5, linewidth=1.5, label='P_arrival')
+        plt.plot(x, np.array(yh3), '--', color='r', alpha = 0.5, linewidth=1.5, label='S_arrival')
         
     plt.tight_layout()       
     plt.ylim((-0.1, 1.1)) 
@@ -137,7 +133,7 @@ def PlotTime(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: list
 
 
 
-def cal_dist(stlat, stlon, evlat, evlon, type):
+def CalDist(stlat, stlon, evlat, evlon, type: str):
     '''
     Calculate the distance between station and event
     Input:

@@ -5,6 +5,7 @@ from obspy import UTCDateTime
 import json
 import h5py
 import obspy
+import calendar
 from plot import PlotTime
 
 t2str = lambda x: x.__unicode__()
@@ -34,9 +35,15 @@ class Sta:
         et = UTCDateTime(1900,1,1,0,0)
         datadir = os.path.join(self.workdir,'data', self.name)
 
+        data_time = {}
+
         for f in os.listdir(datadir):
-            tbt = str2t(f.split('.')[3].split('__')[1])
-            tet = str2t(f.split('.')[3].split('__')[2])
+            cha, tbt, tet = f.split('.')[3].split('__')
+
+            if tbt not in data_time.keys():
+                data_time[tbt] = {}
+            if cha not in data_time[tbt].keys():
+                data_time[tbt][cha] = f
 
             if tbt < bt:
                 bt = tbt
@@ -46,6 +53,7 @@ class Sta:
 
         self.start = bt
         self.end = et
+        self.data_time = data_time
 
     
 
@@ -92,10 +100,10 @@ class Sta:
                     s.append(t)
 
             for tlabel, data in pickprob['p'].items():
-                with open(os.path.join(self.workdir, 'association', tlabel, f'{self.network}.{self.name}.P'), 'w') as f:
+                with open(os.path.join(self.workdir, 'association', tlabel, f'{self.network}.{self.name}.P.txt'), 'w') as f:
                     f.writelines(data)
             for tlabel, data in pickprob['s'].items():
-                with open(os.path.join(self.workdir, 'association', tlabel, f'{self.network}.{self.name}.S'), 'w') as f:
+                with open(os.path.join(self.workdir, 'association', tlabel, f'{self.network}.{self.name}.S.txt'), 'w') as f:
                     f.writelines(data)
 
             self.detP = p
@@ -105,6 +113,12 @@ class Sta:
 
 
     
+    def LoadProb(self) -> None:
+        probf = os.path.join(self.workdir, 'detections', self.name + '_outputs', "prediction_probabilities.hdf5")
+        self.prob = h5py.File(probf, 'r')
+        
+
+
     def CalFscore(self, threshold) -> None:
         def _CalFscore(det: list, obs: list, start: UTCDateTime, end: UTCDateTime, threshold: float):
             TP = []
@@ -159,40 +173,27 @@ class Sta:
             with open(fscoref, 'r') as f:
                 self.fscore = json.load(f)
 
-        if (not os.path.isfile(fscoref)) or (self.fscore['threshold'] != threshold):
+        if (not os.path.isfile(fscoref)) or (not ('threshold' in self.fscore.keys())) or (self.fscore['threshold'] != threshold):
             pTP, pFN, pFP = _CalFscore(self.detP, self.manP, self.start, self.end, threshold)
             sTP, sFN, sFP = _CalFscore(self.detS, self.manS, self.start, self.end, threshold)
 
-            self.fscore = {'threshold': threshold,'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}}
+            self.fscore = {'threshold': threshold, 'Fscore': {'precision': (len(pTP)+len(sTP))/(len(pTP)+len(sTP)+len(pFP)+len(sFP)), 'recall': (len(sTP)+len(pTP))/(len(sTP)+len(pTP)+len(pFN)+len(sFN))}, 'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}}
             with open(fscoref, 'w') as f:
                 json.dump(self.fscore, f)
     
     
     
-    def PlotEvent(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float) -> None:
+    def PlotPick(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float) -> None:
         figdir = os.path.join(self.workdir, 'figures', self.name)
         if os.path.isdir(figdir):
             shutil.rmtree(figdir)
         os.makedirs(figdir)
 
-        # Load probability
-        probf = os.path.join(self.workdir, 'detections', self.name + '_outputs', "prediction_probabilities.hdf5")
-        prob = h5py.File(probf, 'r')
-        timeslot = list(prob.keys())
-
-        # Load data file
-        data_time = {}
-        for f in os.listdir(os.path.join(self.workdir, 'data', self.name)):
-            st = f.split('__')[1]
-            cha = f.split('__')[0].split('.')[-1]
-            if st not in data_time.keys():
-                data_time[st] = {}
-            if cha not in data_time[st].keys():
-                data_time[st][cha] = f
+        probslot = list(self.prob.keys())
         
         indicator = [0, 0, 0, 0]
 
-        for ts in timeslot:
+        for ts in probslot:
             t = str2t(ts)
 
             if t >= start and t <= end:
@@ -203,10 +204,11 @@ class Sta:
                 
                 # Get data
                 data = {}
-                for dt in data_time.keys():
-                    if t >= UTCDateTime(dt) and t + 60 <= UTCDateTime(dt) + 60 * 60 * 24 * 30:
-                        for c in data_time[dt].keys():
-                            tempstream = obspy.read(os.path.join(self.workdir, 'data', self.name, data_time[dt][c]))
+                for dt in self.data_time.keys():
+                    dtt = UTCDateTime(dt)
+                    if t >= dtt and t + 60 <= dtt + 60 * 60 * 24 * calendar.monthrange(dtt.year, dtt.month)[1]:
+                        for c in self.data_time[dt].keys():
+                            tempstream = obspy.read(os.path.join(self.workdir, 'data', self.name, self.data_time[dt][c]))
                             for tr in tempstream:
                                 if t >= tr.stats.starttime and end <= tr.stats.endtime:
                                     tr.detrend('demean')
@@ -222,7 +224,7 @@ class Sta:
                 while self.detP[j] < t + 60:
                     if self.detP[j] >= t:
                         pt = int((self.detP[j] - t) / 0.01)
-                        pmax = max(prob[ts]['P_arrival'][pt-2: pt+2])
+                        pmax = max(self.prob[ts]['P_arrival'][pt-2: pt+2])
                         if pmax > self.parameter['p']:
                             dpt.append((self.detP[j] - t)/delta)
                     else:
@@ -233,7 +235,7 @@ class Sta:
                 while self.detS[j] < t + 60:
                     if self.detS[j] >= t:
                         pt = int((self.detS[j] - t) / 0.01)
-                        pmax = max(prob[ts]['S_arrival'][pt-2: pt+2])
+                        pmax = max(self.prob[ts]['S_arrival'][pt-2: pt+2])
                         if pmax > self.parameter['s']:
                             dst.append((self.detS[j] - t)/delta)
                     else:
@@ -257,7 +259,7 @@ class Sta:
                     j = j + 1
                 
                 fig_name = os.path.join(figdir, ts)
-                PlotTime(fig_name, data, mpt, mst, dpt, dst, delta, prob[ts]['Earthquake'], prob[ts]['P_arrival'], prob[ts]['S_arrival'])
+                PlotTime(fig_name, data, mpt, mst, dpt, dst, delta, self.prob[ts]['Earthquake'], self.prob[ts]['P_arrival'], self.prob[ts]['S_arrival'])
             
             elif t > end:
                 break
@@ -288,10 +290,16 @@ class Sta:
                 et = UTCDateTime(1900,1,1,0,0)
                 channels = []
 
+                data_time = {}
                 for mseed in os.listdir(datadir):
                     cha, tbt, tet = mseed.split('.')[3].split('__')
                     tbt = str2t(tbt)
                     tet = str2t(tet)
+
+                    if tbt not in data_time.keys():
+                        data_time[tbt] = {}
+                    if cha not in data_time[tbt].keys():
+                        data_time[tbt][cha] = f
 
                     if tbt < bt:
                         bt = tbt
@@ -303,6 +311,7 @@ class Sta:
 
                 stationCls[sta[i]].start = bt
                 stationCls[sta[i]].end = et
+                stationCls[sta[i]].data_time = data_time
                 stationCls[sta[i]].SetChan = list(set(channels))
                 stationList[sta[i]]['channels'] = list(set(channels))
 
