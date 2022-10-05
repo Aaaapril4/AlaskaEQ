@@ -100,9 +100,15 @@ class Sta:
                     s.append(t)
 
             for tlabel, data in pickprob['p'].items():
+                datedir = os.path.join(self.workdir, 'association', tlabel)
+                if not os.path.isdir(datedir):
+                    os.makedirs(datedir)
                 with open(os.path.join(self.workdir, 'association', tlabel, f'{self.network}.{self.name}.P.txt'), 'w') as f:
                     f.writelines(data)
             for tlabel, data in pickprob['s'].items():
+                datedir = os.path.join(self.workdir, 'association', tlabel)
+                if not os.path.isdir(datedir):
+                    os.makedirs(datedir)
                 with open(os.path.join(self.workdir, 'association', tlabel, f'{self.network}.{self.name}.S.txt'), 'w') as f:
                     f.writelines(data)
 
@@ -115,7 +121,11 @@ class Sta:
     
     def LoadProb(self) -> None:
         probf = os.path.join(self.workdir, 'detections', self.name + '_outputs', "prediction_probabilities.hdf5")
-        self.prob = h5py.File(probf, 'r')
+        try:
+            self.prob = h5py.File(probf, 'r')
+        except (FileNotFoundError, OSError):
+            self.prob = None
+            
         
 
 
@@ -168,18 +178,24 @@ class Sta:
                         i = i + 1
             return TP, FN, FP
 
-        fscoref = os.path.join(self.workdir, 'detections', self.name+'_outputs', 'Fscore.json')
-        if os.path.isfile(fscoref):
-            with open(fscoref, 'r') as f:
-                self.fscore = json.load(f)
+        if self.prob != None:
+            fscoref = os.path.join(self.workdir, 'detections', self.name+'_outputs', 'Fscore.json')
+            if os.path.isfile(fscoref):
+                with open(fscoref, 'r') as f:
+                    self.fscore = json.load(f)
 
-        if (not os.path.isfile(fscoref)) or (not ('threshold' in self.fscore.keys())) or (self.fscore['threshold'] != threshold):
-            pTP, pFN, pFP = _CalFscore(self.detP, self.manP, self.start, self.end, threshold)
-            sTP, sFN, sFP = _CalFscore(self.detS, self.manS, self.start, self.end, threshold)
-
-            self.fscore = {'threshold': threshold, 'Fscore': {'precision': (len(pTP)+len(sTP))/(len(pTP)+len(sTP)+len(pFP)+len(sFP)), 'recall': (len(sTP)+len(pTP))/(len(sTP)+len(pTP)+len(pFN)+len(sFN))}, 'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}}
-            with open(fscoref, 'w') as f:
-                json.dump(self.fscore, f)
+            if (not os.path.isfile(fscoref)) or (not ('threshold' in self.fscore.keys())) or (self.fscore['threshold'] != threshold):
+                pTP, pFN, pFP = _CalFscore(self.detP, self.manP, self.start, self.end, threshold)
+                sTP, sFN, sFP = _CalFscore(self.detS, self.manS, self.start, self.end, threshold)
+                try:
+                    precision = (len(pTP)+len(sTP))/(len(pTP)+len(sTP)+len(pFP)+len(sFP))
+                    recall = (len(sTP)+len(pTP))/(len(sTP)+len(pTP)+len(pFN)+len(sFN))
+                except ZeroDivisionError:
+                    precision = None
+                    recall = None
+                self.fscore = {'threshold': threshold, 'Fscore': {'precision': precision, 'recall': recall}, 'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}}
+                with open(fscoref, 'w') as f:
+                    json.dump(self.fscore, f)
     
     
     
@@ -189,80 +205,81 @@ class Sta:
             shutil.rmtree(figdir)
         os.makedirs(figdir)
 
-        probslot = list(self.prob.keys())
-        
-        indicator = [0, 0, 0, 0]
-
-        for ts in probslot:
-            t = str2t(ts)
-
-            if t >= start and t <= end:
-                dpt = []
-                dst = []
-                mpt = []
-                mst = []
-                
-                # Get data
-                data = {}
-                for dt in self.data_time.keys():
-                    dtt = UTCDateTime(dt)
-                    if t >= dtt and t + 60 <= dtt + 60 * 60 * 24 * calendar.monthrange(dtt.year, dtt.month)[1]:
-                        for c in self.data_time[dt].keys():
-                            tempstream = obspy.read(os.path.join(self.workdir, 'data', self.name, self.data_time[dt][c]))
-                            for tr in tempstream:
-                                if t >= tr.stats.starttime and end <= tr.stats.endtime:
-                                    tr.detrend('demean')
-                                    tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
-                                    tr.taper(max_percentage=0.001, type='cosine', max_length=2) 
-                                    delta = tr.stats.delta
-                                    be = int((t - tr.stats.starttime) / delta)
-                                    ne = int((t - tr.stats.starttime + 60) / delta)
-                                    data[c] = tr.data[be:ne+1]
-                                    break
-
-                j = indicator[0]
-                while self.detP[j] < t + 60:
-                    if self.detP[j] >= t:
-                        pt = int((self.detP[j] - t) / 0.01)
-                        pmax = max(self.prob[ts]['P_arrival'][pt-2: pt+2])
-                        if pmax > self.parameter['p']:
-                            dpt.append((self.detP[j] - t)/delta)
-                    else:
-                        indicator[0] = j
-                    j = j + 1
-
-                j = indicator[1]
-                while self.detS[j] < t + 60:
-                    if self.detS[j] >= t:
-                        pt = int((self.detS[j] - t) / 0.01)
-                        pmax = max(self.prob[ts]['S_arrival'][pt-2: pt+2])
-                        if pmax > self.parameter['s']:
-                            dst.append((self.detS[j] - t)/delta)
-                    else:
-                        indicator[1] = j
-                    j = j + 1
-
-                j = indicator[2]
-                while self.manP[j] < t + 60:
-                    if self.manP[j] >= t:
-                        mpt.append((self.manP[j] - t)/delta)
-                    else:
-                        indicator[2] = j
-                    j = j + 1
-
-                j = indicator[3]
-                while self.manS[j] < t + 60:
-                    if self.manS[j] >= t:
-                        mst.append((self.manS[j] - t)/delta)
-                    else:
-                        indicator[3] = j
-                    j = j + 1
-                
-                fig_name = os.path.join(figdir, ts)
-                PlotTime(fig_name, data, mpt, mst, dpt, dst, delta, self.prob[ts]['Earthquake'], self.prob[ts]['P_arrival'], self.prob[ts]['S_arrival'])
+        if self.prob != None:
+            probslot = list(self.prob.keys())
             
-            elif t > end:
-                break
+            indicator = [0, 0, 0, 0]
+
+            for ts in probslot:
+                t = str2t(ts)
+
+                if t >= start and t <= end:
+                    dpt = []
+                    dst = []
+                    mpt = []
+                    mst = []
+                    
+                    # Get data
+                    data = {}
+                    for dt in self.data_time.keys():
+                        dtt = UTCDateTime(dt)
+                        if t >= dtt and t + 60 <= dtt + 60 * 60 * 24 * calendar.monthrange(dtt.year, dtt.month)[1]:
+                            for c in self.data_time[dt].keys():
+                                tempstream = obspy.read(os.path.join(self.workdir, 'data', self.name, self.data_time[dt][c]))
+                                for tr in tempstream:
+                                    if t >= tr.stats.starttime and end <= tr.stats.endtime:
+                                        tr.detrend('demean')
+                                        tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
+                                        tr.taper(max_percentage=0.001, type='cosine', max_length=2) 
+                                        delta = tr.stats.delta
+                                        be = int((t - tr.stats.starttime) / delta)
+                                        ne = int((t - tr.stats.starttime + 60) / delta)
+                                        data[c] = tr.data[be:ne+1]
+                                        break
+
+                    j = indicator[0]
+                    while self.detP[j] < t + 60:
+                        if self.detP[j] >= t:
+                            pt = int((self.detP[j] - t) / 0.01)
+                            pmax = max(self.prob[ts]['P_arrival'][pt-2: pt+2])
+                            if pmax > self.parameter['p']:
+                                dpt.append((self.detP[j] - t)/delta)
+                        else:
+                            indicator[0] = j
+                        j = j + 1
+
+                    j = indicator[1]
+                    while self.detS[j] < t + 60:
+                        if self.detS[j] >= t:
+                            pt = int((self.detS[j] - t) / 0.01)
+                            pmax = max(self.prob[ts]['S_arrival'][pt-2: pt+2])
+                            if pmax > self.parameter['s']:
+                                dst.append((self.detS[j] - t)/delta)
+                        else:
+                            indicator[1] = j
+                        j = j + 1
+
+                    j = indicator[2]
+                    while self.manP[j] < t + 60:
+                        if self.manP[j] >= t:
+                            mpt.append((self.manP[j] - t)/delta)
+                        else:
+                            indicator[2] = j
+                        j = j + 1
+
+                    j = indicator[3]
+                    while self.manS[j] < t + 60:
+                        if self.manS[j] >= t:
+                            mst.append((self.manS[j] - t)/delta)
+                        else:
+                            indicator[3] = j
+                        j = j + 1
+                    
+                    fig_name = os.path.join(figdir, ts)
+                    PlotTime(fig_name, data, mpt, mst, dpt, dst, delta, self.prob[ts]['Earthquake'], self.prob[ts]['P_arrival'], self.prob[ts]['S_arrival'])
+                
+                elif t > end:
+                    break
 
 
 
@@ -338,3 +355,8 @@ class Sta:
             stationCls[sta].SetTime()
 
         return stationCls
+
+
+
+    # @classmethod
+    # def PlotEvent(self):
