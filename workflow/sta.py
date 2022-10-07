@@ -128,7 +128,6 @@ class Sta:
             
         
 
-
     def CalFscore(self, threshold) -> None:
         def _CalFscore(det: list, obs: list, start: UTCDateTime, end: UTCDateTime, threshold: float):
             TP = []
@@ -198,7 +197,68 @@ class Sta:
                     json.dump(self.fscore, f)
     
     
-    
+
+    def GetData(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float) -> tuple[dict, float]:
+        data = {}
+        for dt in self.data_time.keys():
+            dtt = UTCDateTime(dt)
+            if start >= dtt and end <= dtt + 60 * 60 * 24 * calendar.monthrange(dtt.year, dtt.month)[1]:
+                for c in self.data_time[dt].keys():
+                    tempstream = obspy.read(os.path.join(self.workdir, 'data', self.name, self.data_time[dt][c]))
+                    for tr in tempstream:
+                        if start >= tr.stats.starttime and end <= tr.stats.endtime:
+                            tr.detrend('demean')
+                            tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
+                            delta = tr.stats.delta
+                            be = int((start - tr.stats.starttime) / delta)
+                            ne = int((end - tr.stats.starttime) / delta)
+                            data[c] = tr.data[be:ne+1]
+                            break
+        return data, delta
+        
+
+
+    def GetPicks(self, start: UTCDateTime, end: UTCDateTime, delta: float, ts: str = None):
+        dpt = []
+        dst = []
+        mpt = []
+        mst = []
+        
+        j = 0
+        while j < len(self.detP) and self.detP[j] < end:
+            if self.detP[j] >= start:
+                pt = int((self.detP[j] - start) / 0.01)
+                if ts != None:
+                    pmax = max(self.prob[ts]['P_arrival'][pt-2: pt+2])
+                    if pmax > self.parameter['p']:
+                        dpt.append((self.detP[j] - start)/delta)
+            j = j + 1
+
+        j = 0
+        while j < len(self.detS) and self.detS[j] < end:
+            if self.detS[j] >= start:
+                pt = int((self.detS[j] - start) / 0.01)
+                if ts != None:
+                    pmax = max(self.prob[ts]['S_arrival'][pt-2: pt+2])
+                    if pmax > self.parameter['s']:
+                        dst.append((self.detS[j] - start)/delta)
+            j = j + 1
+
+        j = 0
+        while j < len(self.manP) and self.manP[j] < end:
+            if self.manP[j] >= start:
+                mpt.append((self.manP[j] - start)/delta)
+            j = j + 1
+
+        j = 0
+        while j < len(self.manS) and self.manS[j] < end:
+            if self.manS[j] >= start:
+                mst.append((self.manS[j] - start)/delta)
+            j = j + 1
+        return dpt, dst, mpt, mst
+
+
+
     def PlotPick(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float) -> None:
         figdir = os.path.join(self.workdir, 'figures', self.name)
         if os.path.isdir(figdir):
@@ -207,75 +267,16 @@ class Sta:
 
         if self.prob != None:
             probslot = list(self.prob.keys())
-            
-            indicator = [0, 0, 0, 0]
 
             for ts in probslot:
                 t = str2t(ts)
 
                 if t >= start and t <= end:
-                    dpt = []
-                    dst = []
-                    mpt = []
-                    mst = []
+    
+                    data, delta = self.GetData(start = t, end = t + 60, minf = minf, maxf = maxf)         
+                    dpt, dst, mpt, mst = self.GetPicks(t, t + 60, delta, ts)
                     
-                    # Get data
-                    data = {}
-                    for dt in self.data_time.keys():
-                        dtt = UTCDateTime(dt)
-                        if t >= dtt and t + 60 <= dtt + 60 * 60 * 24 * calendar.monthrange(dtt.year, dtt.month)[1]:
-                            for c in self.data_time[dt].keys():
-                                tempstream = obspy.read(os.path.join(self.workdir, 'data', self.name, self.data_time[dt][c]))
-                                for tr in tempstream:
-                                    if t >= tr.stats.starttime and end <= tr.stats.endtime:
-                                        tr.detrend('demean')
-                                        tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
-                                        tr.taper(max_percentage=0.001, type='cosine', max_length=2) 
-                                        delta = tr.stats.delta
-                                        be = int((t - tr.stats.starttime) / delta)
-                                        ne = int((t - tr.stats.starttime + 60) / delta)
-                                        data[c] = tr.data[be:ne+1]
-                                        break
-
-                    j = indicator[0]
-                    while self.detP[j] < t + 60:
-                        if self.detP[j] >= t:
-                            pt = int((self.detP[j] - t) / 0.01)
-                            pmax = max(self.prob[ts]['P_arrival'][pt-2: pt+2])
-                            if pmax > self.parameter['p']:
-                                dpt.append((self.detP[j] - t)/delta)
-                        else:
-                            indicator[0] = j
-                        j = j + 1
-
-                    j = indicator[1]
-                    while self.detS[j] < t + 60:
-                        if self.detS[j] >= t:
-                            pt = int((self.detS[j] - t) / 0.01)
-                            pmax = max(self.prob[ts]['S_arrival'][pt-2: pt+2])
-                            if pmax > self.parameter['s']:
-                                dst.append((self.detS[j] - t)/delta)
-                        else:
-                            indicator[1] = j
-                        j = j + 1
-
-                    j = indicator[2]
-                    while self.manP[j] < t + 60:
-                        if self.manP[j] >= t:
-                            mpt.append((self.manP[j] - t)/delta)
-                        else:
-                            indicator[2] = j
-                        j = j + 1
-
-                    j = indicator[3]
-                    while self.manS[j] < t + 60:
-                        if self.manS[j] >= t:
-                            mst.append((self.manS[j] - t)/delta)
-                        else:
-                            indicator[3] = j
-                        j = j + 1
-                    
-                    fig_name = os.path.join(figdir, ts)
+                    fig_name = os.path.join(figdir, f'{self.name}:{t.__unicode__()}')
                     PlotTime(fig_name, data, mpt, mst, dpt, dst, delta, self.prob[ts]['Earthquake'], self.prob[ts]['P_arrival'], self.prob[ts]['S_arrival'])
                 
                 elif t > end:
