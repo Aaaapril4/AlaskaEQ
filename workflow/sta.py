@@ -198,8 +198,9 @@ class Sta:
     
     
 
-    def GetData(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float) -> tuple[dict, float]:
+    def GetData(self, start: UTCDateTime, end: UTCDateTime, minf: float):
         data = {}
+        delta = 0
         for dt in self.data_time.keys():
             dtt = UTCDateTime(dt)
             if start >= dtt and end <= dtt + 60 * 60 * 24 * calendar.monthrange(dtt.year, dtt.month)[1]:
@@ -208,17 +209,21 @@ class Sta:
                     for tr in tempstream:
                         if start >= tr.stats.starttime and end <= tr.stats.endtime:
                             tr.detrend('demean')
-                            tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
+                            # tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
+                            tr.filter(type='highpass', freq = minf)
                             delta = tr.stats.delta
                             be = int((start - tr.stats.starttime) / delta)
                             ne = int((end - tr.stats.starttime) / delta)
                             data[c] = tr.data[be:ne+1]
                             break
-        return data, delta
+        if delta == 0:
+            return None, 0
+        else:
+            return data, delta
         
 
 
-    def GetPicks(self, start: UTCDateTime, end: UTCDateTime, delta: float, ts: str = None):
+    def GetPicks(self, start: UTCDateTime, end: UTCDateTime, delta: float, ts: str = None, outt: bool = False):
         dpt = []
         dst = []
         mpt = []
@@ -232,6 +237,11 @@ class Sta:
                     pmax = max(self.prob[ts]['P_arrival'][pt-2: pt+2])
                     if pmax > self.parameter['p']:
                         dpt.append((self.detP[j] - start)/delta)
+                else:
+                    if not outt:
+                        dpt.append((self.detP[j] - start)/delta)
+                    else:
+                        dpt.append()
             j = j + 1
 
         j = 0
@@ -242,6 +252,8 @@ class Sta:
                     pmax = max(self.prob[ts]['S_arrival'][pt-2: pt+2])
                     if pmax > self.parameter['s']:
                         dst.append((self.detS[j] - start)/delta)
+                else:
+                    dst.append((self.detS[j] - start)/delta)
             j = j + 1
 
         j = 0
@@ -259,7 +271,7 @@ class Sta:
 
 
 
-    def PlotPick(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float) -> None:
+    def PlotPick(self, start: UTCDateTime, end: UTCDateTime, minf: float) -> None:
         figdir = os.path.join(self.workdir, 'figures', self.name)
         if os.path.isdir(figdir):
             shutil.rmtree(figdir)
@@ -273,7 +285,7 @@ class Sta:
 
                 if t >= start and t <= end:
     
-                    data, delta = self.GetData(start = t, end = t + 60, minf = minf, maxf = maxf)         
+                    data, delta = self.GetData(start = t, end = t + 60, minf = minf)         
                     dpt, dst, mpt, mst = self.GetPicks(t, t + 60, delta, ts)
                     
                     fig_name = os.path.join(figdir, f'{self.name}:{t.__unicode__()}')
@@ -310,14 +322,14 @@ class Sta:
 
                 data_time = {}
                 for mseed in os.listdir(datadir):
-                    cha, tbt, tet = mseed.split('.')[3].split('__')
-                    tbt = str2t(tbt)
-                    tet = str2t(tet)
+                    cha, tb, te = mseed.split('.')[3].split('__')
+                    tbt = str2t(tb)
+                    tet = str2t(te)
 
-                    if tbt not in data_time.keys():
-                        data_time[tbt] = {}
-                    if cha not in data_time[tbt].keys():
-                        data_time[tbt][cha] = f
+                    if tb not in data_time.keys():
+                        data_time[tb] = {}
+                    if cha not in data_time[tb].keys():
+                        data_time[tb][cha] = mseed
 
                     if tbt < bt:
                         bt = tbt
@@ -356,8 +368,3 @@ class Sta:
             stationCls[sta].SetTime()
 
         return stationCls
-
-
-
-    # @classmethod
-    # def PlotEvent(self):

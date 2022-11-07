@@ -1,10 +1,8 @@
-from obspy import UTCDateTime
-import obspy
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-import json
+from obspy import UTCDateTime
 
 def PlotComponent(ax, com: str, data: dict, delta: float, ppt: list, mppt: list, pst: list, mpst: list, title: str):
     try:
@@ -133,24 +131,6 @@ def PlotTime(figf: str, data: dict, mppt: list, mpst: list, ppt: list, pst: list
 
 
 
-def CalDist(stlat, stlon, evlat, evlon, type: str):
-    '''
-    Calculate the distance between station and event
-    Input:
-        stlat, stlon, evlat, evlon
-        type: 'distance', 'backazimuth', 'azimuth'
-    Return:
-        result in km or degree
-    '''
-    
-    from obspy.clients.iris import Client
-    client = Client()
-    result = client.distaz(stalat=stlat, stalon=stlon, evtlat=evlat, evtlon=evlon)
-
-    return float(result[type])
-
-
-
 def sort_trace_time(path):
     '''
     Return a dictionary of time of each trace
@@ -180,61 +160,122 @@ def sort_trace_time(path):
 
 
 
-def get_offdata(path, trtime, evname, evlat, evlon, evtime, bw, ew, amp, cha):
-    [ sta, net ] = evname.split('_')[0:2]
-    stalat, stalon = get_sta_latlon(net, sta, stafile)
-    dist = cal_dist(stalat, stalon, evlat, evlon, 'distance')
-    stainfo = trtime[f'{net}.{sta}']
-    for t in stainfo['time']:
-        if evtime < UTCDateTime(t.split('__')[0]) or evtime > UTCDateTime(t.split('__')[1]):
+def PlotEvent(datadic: dict, figf: str, start: float, end: float) -> None:
+
+    def _plotCom(ax, x, data, pos, mpt, mst, dpt, dst, thet):
+
+        if len(x) != len(data):
+            minlen = min(len(x), len(data))
+            x = x[0: minlen]
+            data = data[0: minlen]
+        
+        ax.plot(x, data, color='black', linewidth=0.2)
+        ax.vlines(dpt, pos[0] - pos[1], pos[0] + pos[1],  color='c', lw=0.8, alpha = 0.8, zorder = 0)
+        ax.vlines(dst, pos[0] - pos[1], pos[0] + pos[1],  color='m', lw=0.8, alpha = 0.8, zorder = 0)
+        ax.vlines(mpt, pos[0] - pos[1], pos[0] + pos[1],  color='orange', lw=0.8, linestyle='dotted', alpha = 0.8, zorder = 5)
+        ax.vlines(mst, pos[0] - pos[1], pos[0] + pos[1],  color='springgreen', lw=0.8, linestyle='dotted', alpha = 0.8, zorder = 5)
+        ax.scatter(thet['p'], pos[0], s = 2, c = 'blue', alpha = 0.8, zorder = 10)
+        ax.scatter(thet['s'], pos[0], s = 2, c = 'orange', alpha = 0.8, zorder = 10)
+
+        return ax
+
+    plt.figure(constrained_layout=True, figsize=(12,6))
+    fig, (axZ, axN, axE) = plt.subplots(ncols=3)
+
+    for data in datadic.values():
+        x = np.arange(start*60, end*60 + data['delta'], data['delta'])
+        if 'dataZ' in data.keys():
+            axZ = _plotCom(axZ, x, data['dataZ'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'], data['theoryt'])
+
+        if 'dataN' in data.keys():
+            axN = _plotCom(axN, x, data['dataN'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'], data['theoryt'])
+
+        if 'dataE' in data.keys():
+            axE = _plotCom(axE, x, data['dataE'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'], data['theoryt'])
+
+    axZ.set_title('Z component', fontsize=8)
+    axN.set_title('N component', fontsize=8)
+    axE.set_title('E component', fontsize=8)
+
+    axZ.set_xlim(start * 60, end * 60)
+    axN.set_xlim(start * 60, end * 60) 
+    axE.set_xlim(start * 60, end * 60)
+
+    axZ.set_ylabel('Distance (degree)', fontsize=8)
+    axZ.set_xlabel('Time (s)', fontsize=8)
+    axE.set_xlabel('Time (s)', fontsize=8)
+    axN.set_xlabel('Time (s)', fontsize=8)
+    axN.set_yticks([])
+    axE.set_yticks([])
+    axZ.tick_params(labelsize=8)
+    axN.tick_params(labelsize=8)
+    axE.tick_params(labelsize=8)
+
+    custom_lines = [Line2D([0], [0], color='c', lw=0.8),
+                    Line2D([0], [0], color='m', lw=0.8),
+                    Line2D([0], [0], color='orange', lw=0.8, linestyle='dotted'),
+                    Line2D([0], [0], color='springgreen', lw=0.8, linestyle='dotted')]
+    fig.legend(custom_lines, ['EQT P', 'EQT S', 'AEC P', 'AEC S'], 
+                loc='lower center', bbox_to_anchor=(1.01, 0.5), 
+                fancybox=True, shadow=True, mode='expand')
+
+
+    fig.tight_layout()
+    plt.savefig(figf + '.pdf', format='pdf')
+    plt.close(fig)
+    plt.clf()
+
+
+
+def PlotAllEvents(file):
+    id, t, lo, la, d, m = np.loadtxt(file, unpack=True, usecols=(0, 1, 2, 3, 4, 5), dtype=str)
+    nid = []
+    nt = []
+    nlo = []
+    nla = []
+    nd = []
+    nm = []
+    tdiff = []
+
+    for i, idx in enumerate(id):
+        if idx in nid:
             continue
         
-        loc = stainfo['location']
-        for c in stainfo['channel']:
-            if c[2] == cha:
-                channel = c
-        st = obspy.read(f'{path}/{sta}/{net}.{sta}.{loc}.{channel}__{t}.mseed')
-        print(f'{path}/{sta}/{net}.{sta}.{loc}.{channel}__{t}.mseed')
-        for tr in st:
-            if evtime < tr.stats.starttime or evtime > tr.stats.endtime:
-                continue
-            tr.filter('bandpass', freqmin = 1, freqmax = 45)
-            ib = int((evtime - tr.stats.starttime - bw)/tr.stats.delta)
-            ie = int((evtime - tr.stats.starttime + ew)/tr.stats.delta)
-            evarr = tr.data[int(ib): int(ie)+1]
-            evarr = evarr / max(evarr)
-            break
-        break
-    return evarr + dist, tr.stats.delta
+        # generate new event table
+        nid.append(idx)
+        nt.append(t[i])
+        nlo.append(float(lo[i]))
+        nla.append(float(la[i]))
+        nd.append(float(d[i]))
+        nm.append(float(m[i]))
+        tdiff.append((UTCDateTime(t[i]) - UTCDateTime(2018, 11, 1))/(24*60*60))
+
+    id, t, lo, la, d, m, diff = zip(*sorted(zip(nid, nt, nlo, nla, nd, nm, tdiff)))
+
+    start = t[0]
+    temp = []
+    for i, idx in enumerate(id):
+        if i >= 1 and UTCDateTime(t[i]) - UTCDateTime(start) <= 480:
+            temp.append(t[i])
+        else:
+            if len(temp) >= 2:
+                print(temp)
+            start = t[i]
+            temp = [start]
+
+    plt.figure(figsize=(4,3))
+    plt.scatter(x = tdiff, y = nm, c = nd, s = 0.5, cmap='magma', vmin = 0, vmax = 220)
+    plt.xlim([0,61])
+    plt.xlabel('Time (day)', fontsize = 8)
+    plt.ylabel('Magnitude', fontsize = 8)
+    plt.xticks(fontsize = 8)
+    plt.yticks(fontsize = 8)
+    cbar = plt.colorbar()
+    cbar.ax.tick_params(labelsize=8)
+    plt.tight_layout()
+    plt.savefig('/mnt/home/jieyaqi/Downloads/events.pdf', format = 'pdf')
 
 
 
-def plot_moveout(ass_dir):
-    with open(f'{ass_dir}/traceNmae_dic.json') as f:
-        evtr = json.load(f)
-    ev = obspy.read_events(f'{path}/associations.xml')
-    stafile = "/mnt/scratch/jieyaqi/alaska/station.txt"
-    for evid in evtr.keys():
-        if evid[0] != '2':
-            continue
-
-    evtrlist = evtr[evid]
-    evinfo = ev[int(evid) - 200001].origins[0]
-    evlat = evinfo.latitude
-    evlon = evinfo.longitude
-    evtime = evinfo.time
-    print(evid)
-    plt.figure(figsize=(5,10))
-    for evname in evtrlist:
-        data, dt = get_offdata(f'{path}/downloads_mseeds', trtime, evname, evlat, evlon, evtime, 2 * 60, 5 * 60, 2, 'Z')
-        x = np.arange(-2*60, 5*60 + dt, dt)
-        if len(x) != len(data):
-            x = np.append(x, x[-1]+dt)
-        plt.plot(x, data, color='black', linewidth=0.5)
-        plt.xlim([-120,300])
-        plt.ylim([-2,10])
-    
-
-if __name__ == '__main__':
-    mpickdir = sort_manual_pick("/mnt/ufs18/nodr/home/jieyaqi/alaska/manual_pick/AACSE_arrival_final_PS.dat")
-    plot_time("/mnt/scratch/jieyaqi/alaska/test/detections", "/mnt/scratch/jieyaqi/alaska/test/data", "/mnt/scratch/jieyaqi/alaska/test/figures", mpickdir = mpickdir, number_of_plots=20)
+if __name__ == "__main__":
+    PlotAllEvents('/mnt/ufs18/nodr/home/jieyaqi/alaska/manual_pick/AACSE/test')
