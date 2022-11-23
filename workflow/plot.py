@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from obspy import UTCDateTime
@@ -16,49 +18,22 @@ def PlotComponent(ax, com: str, data: dict, delta: float, ppt: list, mppt: list,
     ax.set_ylabel('Amplitude\nCounts')
     ax.set_xticks(ticks=np.arange(0,60/delta+1, 10/delta))
     ax.set_xticklabels(np.arange(0,60+1, 10))
-    
-    pl = sl = mpl = msl = None        
-    if len(ppt) > 0 and com != None:
-        for ipt, pt in enumerate(ppt):
-            if pt and ipt == 0:
-                pl = ax.vlines(int(pt), ymin, ymax, color='c', linewidth=2, label='EQT P')
-            elif pt and ipt > 0:
-                pl = ax.vlines(int(pt), ymin, ymax, color='c', linewidth=2)
-        
-        for pt in mppt:
-            mpl = ax.vlines(int(pt), ymin, ymax, color='orange', linestyles='dashed', linewidth=2)
-    
-    if len(pst) > 0 and com != None: 
-        for ist, st in enumerate(pst): 
-            if st and ist == 0:
-                sl = ax.vlines(int(st), ymin, ymax, color='m', linewidth=2, label='EQT S')
-            elif st and ist > 0:
-                sl = ax.vlines(int(st), ymin, ymax, color='m', linewidth=2)
-        
-        for pt in mpst:
-            msl = ax.vlines(int(pt), ymin, ymax, color='springgreen', linestyles='dashed', linewidth=2)
-                
-    if (pl or sl) and ( not msl and not mpl):    
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        custom_lines = [Line2D([0], [0], color='k', lw=0),
-                        Line2D([0], [0], color='c', lw=2),
-                        Line2D([0], [0], color='m', lw=2)]
-        ax.legend(custom_lines, [com, 'EQT P', 'EQT S'], 
-                    loc='center left', bbox_to_anchor=(1.01, 0.5), 
-                    fancybox=True, shadow=True)
 
-    if (pl or sl) and ( msl or mpl):    
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        custom_lines = [Line2D([0], [0], color='k', lw=0),
-                        Line2D([0], [0], color='c', lw=2),
-                        Line2D([0], [0], color='m', lw=2),
-                        Line2D([0], [0], color='orange', lw=2, linestyle='dashed'),
-                        Line2D([0], [0], color='springgreen', lw=2, linestyle='dashed')]
-        ax.legend(custom_lines, [com, 'EQT P', 'EQT S', 'AEC P', 'AEC S'], 
-                    loc='center left', bbox_to_anchor=(1.01, 0.5), 
-                    fancybox=True, shadow=True)
+    ax.vlines(ppt, [ymin]*len(ppt), [ymax]*len(ppt), color='#646F4B', linewidth=2, zorder = 5)
+    ax.scatter(mppt, [0]*len(mppt), color='#646F4B', s = 4, zorder = 10)
+    ax.vlines(pst, [ymin]*len(pst), [ymax]*len(pst), color='#b4654a', linewidth=2, zorder = 5)
+    ax.scatter(mpst, [0]*len(mpst), color='#b4654a', s = 4, zorder = 10)
+ 
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    custom_lines = [Line2D([0], [0], color='k', lw=0),
+                    Line2D([0], [0], color='#646F4B', lw=2),
+                    Line2D([0], [0], color='#b4654a', lw=2),
+                    Line2D([0], [0], color='#646F4B', marker = 'o', lw=0),
+                    Line2D([0], [0], color='#b4654a', marker = 'o', lw=0)]
+    ax.legend(custom_lines, [com, 'EQT P', 'EQT S', 'ACE P', 'ACE S'], 
+                loc='center left', bbox_to_anchor=(1.01, 0.5), 
+                fancybox=True, shadow=True)
 
     
 
@@ -160,38 +135,48 @@ def sort_trace_time(path):
 
 
 
-def PlotEvent(datadic: dict, figf: str, start: float, end: float) -> None:
+def PlotEvent(datadic: dict, figf: str, start: float, end: float, theoy: list, theop: list, theos: list, width: float, evt: list = None, evy: list = None) -> None:
 
-    def _plotCom(ax, x, data, pos, mpt, mst, dpt, dst, thet):
+    def _plotCom(ax, x, data, pos, mpt, mst, dpt, dst):
 
         if len(x) != len(data):
             minlen = min(len(x), len(data))
             x = x[0: minlen]
             data = data[0: minlen]
         
-        ax.plot(x, data, color='black', linewidth=0.2)
-        ax.vlines(dpt, pos[0] - pos[1], pos[0] + pos[1],  color='c', lw=0.8, alpha = 0.8, zorder = 0)
-        ax.vlines(dst, pos[0] - pos[1], pos[0] + pos[1],  color='m', lw=0.8, alpha = 0.8, zorder = 0)
-        ax.vlines(mpt, pos[0] - pos[1], pos[0] + pos[1],  color='orange', lw=0.8, linestyle='dotted', alpha = 0.8, zorder = 5)
-        ax.vlines(mst, pos[0] - pos[1], pos[0] + pos[1],  color='springgreen', lw=0.8, linestyle='dotted', alpha = 0.8, zorder = 5)
-        ax.scatter(thet['p'], pos[0], s = 2, c = 'blue', alpha = 0.8, zorder = 10)
-        ax.scatter(thet['s'], pos[0], s = 2, c = 'orange', alpha = 0.8, zorder = 10)
+        ax.plot(x, data, color='black', linewidth=0.04, zorder = 0)
+        ax.vlines(dpt, pos[0] - pos[1], pos[0] + pos[1],  color='#646F4B', lw=0.8, alpha = 0.8, zorder = 5)
+        ax.vlines(dst, pos[0] - pos[1], pos[0] + pos[1],  color='#b4654a', lw=0.8, alpha = 0.8, zorder = 5)
+        ax.scatter(mpt, [pos[0]] * len(mpt) , s = 2, c = '#646F4B', alpha = 0.8, zorder = 10)
+        ax.scatter(mst, [pos[0]] * len(mst), s = 2, c = '#b4654a', alpha = 0.8, zorder = 10)
 
         return ax
 
-    plt.figure(constrained_layout=True, figsize=(12,6))
+    plt.figure(figsize=(width,10))
     fig, (axZ, axN, axE) = plt.subplots(ncols=3)
 
     for data in datadic.values():
         x = np.arange(start*60, end*60 + data['delta'], data['delta'])
         if 'dataZ' in data.keys():
-            axZ = _plotCom(axZ, x, data['dataZ'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'], data['theoryt'])
+            axZ = _plotCom(axZ, x, data['dataZ'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'])
 
         if 'dataN' in data.keys():
-            axN = _plotCom(axN, x, data['dataN'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'], data['theoryt'])
+            axN = _plotCom(axN, x, data['dataN'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'])
 
         if 'dataE' in data.keys():
-            axE = _plotCom(axE, x, data['dataE'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'], data['theoryt'])
+            axE = _plotCom(axE, x, data['dataE'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'])
+
+    for i in range(len(theop)):
+        axZ.plot(theop[i], theoy[i], color = 'c', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
+        axZ.plot(theos[i], theoy[i], color = 'm', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
+        axN.plot(theop[i], theoy[i], color = 'c', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
+        axN.plot(theos[i], theoy[i], color = 'm', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
+        axE.plot(theop[i], theoy[i], color = 'c', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
+        axE.plot(theos[i], theoy[i], color = 'm', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
+    if evt != None:
+        axZ.scatter(evt, evy, s = 5, c = 'red', alpha = 0.8, marker = '*', zorder = 15)
+        axE.scatter(evt, evy, s = 5, c = 'red', alpha = 0.8, marker = '*', zorder = 15)
+        axN.scatter(evt, evy, s = 5, c = 'red', alpha = 0.8, marker = '*', zorder = 15)
 
     axZ.set_title('Z component', fontsize=8)
     axN.set_title('N component', fontsize=8)
@@ -200,8 +185,11 @@ def PlotEvent(datadic: dict, figf: str, start: float, end: float) -> None:
     axZ.set_xlim(start * 60, end * 60)
     axN.set_xlim(start * 60, end * 60) 
     axE.set_xlim(start * 60, end * 60)
-
-    axZ.set_ylabel('Distance (degree)', fontsize=8)
+    axZ.set_ylim(bottom=0)
+    axN.set_ylim(bottom=0)
+    axE.set_ylim(bottom=0)
+    
+    axZ.set_ylabel('Distance (km)', fontsize=8)
     axZ.set_xlabel('Time (s)', fontsize=8)
     axE.set_xlabel('Time (s)', fontsize=8)
     axN.set_xlabel('Time (s)', fontsize=8)
@@ -213,8 +201,8 @@ def PlotEvent(datadic: dict, figf: str, start: float, end: float) -> None:
 
     custom_lines = [Line2D([0], [0], color='c', lw=0.8),
                     Line2D([0], [0], color='m', lw=0.8),
-                    Line2D([0], [0], color='orange', lw=0.8, linestyle='dotted'),
-                    Line2D([0], [0], color='springgreen', lw=0.8, linestyle='dotted')]
+                    Line2D([0], [0], color='c', lw=0.8, linestyle='dashed'),
+                    Line2D([0], [0], color='m', lw=0.8, linestyle='dashed')]
     fig.legend(custom_lines, ['EQT P', 'EQT S', 'AEC P', 'AEC S'], 
                 loc='lower center', bbox_to_anchor=(1.01, 0.5), 
                 fancybox=True, shadow=True, mode='expand')

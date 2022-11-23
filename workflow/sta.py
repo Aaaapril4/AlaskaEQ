@@ -198,7 +198,7 @@ class Sta:
     
     
 
-    def GetData(self, start: UTCDateTime, end: UTCDateTime, minf: float):
+    def GetData(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float):
         data = {}
         delta = 0
         for dt in self.data_time.keys():
@@ -209,8 +209,8 @@ class Sta:
                     for tr in tempstream:
                         if start >= tr.stats.starttime and end <= tr.stats.endtime:
                             tr.detrend('demean')
-                            # tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
-                            tr.filter(type='highpass', freq = minf)
+                            tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
+                            # tr.filter(type='highpass', freq = minf)
                             delta = tr.stats.delta
                             be = int((start - tr.stats.starttime) / delta)
                             ne = int((end - tr.stats.starttime) / delta)
@@ -271,7 +271,7 @@ class Sta:
 
 
 
-    def PlotPick(self, start: UTCDateTime, end: UTCDateTime, minf: float) -> None:
+    def PlotPick(self, start: UTCDateTime, end: UTCDateTime, minf: float, maxf: float) -> None:
         figdir = os.path.join(self.workdir, 'figures', self.name)
         if os.path.isdir(figdir):
             shutil.rmtree(figdir)
@@ -285,7 +285,7 @@ class Sta:
 
                 if t >= start and t <= end:
     
-                    data, delta = self.GetData(start = t, end = t + 60, minf = minf)         
+                    data, delta = self.GetData(start = t, end = t + 60, minf = minf, maxf = maxf)         
                     dpt, dst, mpt, mst = self.GetPicks(t, t + 60, delta, ts)
                     
                     fig_name = os.path.join(figdir, f'{self.name}:{t.__unicode__()}')
