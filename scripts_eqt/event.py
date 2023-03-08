@@ -68,6 +68,8 @@ class Event:
             # dist = self.CalDist(sta.latitude, sta.longitude)
             
             data, delta = sta.GetData(start = self.otime + start * 60, end = self.otime + end * 60, minf = minf, maxf = maxf)
+            if delta == 0:
+                continue
             dpt, dst, mpt, mst = sta.GetPicks(start = self.otime + start * 60, end = self.otime + end * 60, delta = delta)
             
             for i, t in enumerate(dpt):
@@ -114,7 +116,7 @@ class Event:
 
 
     @classmethod
-    def PlotMultiEvent(cls, eventl, start: UTCDateTime, end: UTCDateTime, olat: float, olon: float, stacls: dict, minf: float, maxf: float, amplifier: float):
+    def PlotMultiEvent(cls, eventl, start: UTCDateTime, end: UTCDateTime, olat: float, olon: float, stacls: dict, minf: float, maxf: float, amplifier: float, mpOnly = False):
         model = TauPyModel(model="PREM")
         eventData = {}
         figdir = os.path.join(cls.workdir, 'figures', 'event')
@@ -125,8 +127,7 @@ class Event:
         distd = {}
         for sta in stacls.values():
             result = _CalDist(sta.latitude, sta.longitude, olat, olon)
-            if result['distancemeters']/1000 < 230:
-                distd[sta.name] = float(result['distancemeters']/1000)
+            distd[sta.name] = float(result['distancemeters']/1000)
         distd = {k: v for k, v in sorted(distd.items(), key=lambda x: x[1])}
 
         theoy = []
@@ -147,7 +148,11 @@ class Event:
 
             # dist = self.CalDist(sta.latitude, sta.longitude)
             data, delta = sta.GetData(start = start, end = end, minf = minf, maxf = maxf)
+            if delta == 0:
+                continue
             dpt, dst, mpt, mst = sta.GetPicks(start, end = end, delta = delta)
+            if mpOnly and len(mpt) == 0 and len(mst) == 0:
+                continue
             
             for i, t in enumerate(dpt):
                 dpt[i] = t * delta
@@ -207,5 +212,5 @@ class Event:
         theop = [list(x) for x in theop]
         theos = [list(x) for x in theos]
 
-        fig_name = os.path.join(figdir, f'{start.__unicode__()}_{end.__unicode__()}')
+        fig_name = os.path.join(figdir, f'{start.__unicode__()}_{end.__unicode__()}_{olat}_{olon}')
         PlotEvent(eventData, fig_name, 0, (end-start)/60, theoy, theop, theos, 20, evt, evy)

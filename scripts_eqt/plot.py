@@ -19,18 +19,18 @@ def PlotComponent(ax, com: str, data: dict, delta: float, ppt: list, mppt: list,
     ax.set_xticks(ticks=np.arange(0,60/delta+1, 10/delta))
     ax.set_xticklabels(np.arange(0,60+1, 10))
 
-    ax.vlines(ppt, [ymin]*len(ppt), [ymax]*len(ppt), color='#646F4B', linewidth=2, zorder = 5)
-    ax.scatter(mppt, [0]*len(mppt), color='#646F4B', s = 4, zorder = 10)
-    ax.vlines(pst, [ymin]*len(pst), [ymax]*len(pst), color='#b4654a', linewidth=2, zorder = 5)
-    ax.scatter(mpst, [0]*len(mpst), color='#b4654a', s = 4, zorder = 10)
+    ax.vlines(ppt, [ymin]*len(ppt), [ymax]*len(ppt), color='c', linewidth=2, zorder = 5)
+    ax.scatter(mppt, [0]*len(mppt), color='c', s = 15, zorder = 10)
+    ax.vlines(pst, [ymin]*len(pst), [ymax]*len(pst), color='m', linewidth=2, zorder = 5)
+    ax.scatter(mpst, [0]*len(mpst), color='m', s = 15, zorder = 10)
  
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     custom_lines = [Line2D([0], [0], color='k', lw=0),
-                    Line2D([0], [0], color='#646F4B', lw=2),
-                    Line2D([0], [0], color='#b4654a', lw=2),
-                    Line2D([0], [0], color='#646F4B', marker = 'o', lw=0),
-                    Line2D([0], [0], color='#b4654a', marker = 'o', lw=0)]
+                    Line2D([0], [0], color='c', lw=2),
+                    Line2D([0], [0], color='m', lw=2),
+                    Line2D([0], [0], color='c', marker = 'o', lw=0),
+                    Line2D([0], [0], color='m', marker = 'o', lw=0)]
     ax.legend(custom_lines, [com, 'EQT P', 'EQT S', 'ACE P', 'ACE S'], 
                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
                 fancybox=True, shadow=True)
@@ -135,7 +135,17 @@ def sort_trace_time(path):
 
 
 
-def PlotEvent(datadic: dict, figf: str, start: float, end: float, theoy: list, theop: list, theos: list, width: float, evt: list = None, evy: list = None) -> None:
+def PlotEvent(
+    datadic: dict, 
+    figf: str, 
+    start: float, 
+    end: float, 
+    theoy: list, 
+    theop: list, 
+    theos: list, 
+    width: float, 
+    evt: list = None, 
+    evy: list = None) -> None:
 
     def _plotCom(ax, x, data, pos, mpt, mst, dpt, dst):
 
@@ -144,18 +154,19 @@ def PlotEvent(datadic: dict, figf: str, start: float, end: float, theoy: list, t
             x = x[0: minlen]
             data = data[0: minlen]
         
-        ax.plot(x, data, color='black', linewidth=0.04, zorder = 0)
-        ax.vlines(dpt, pos[0] - pos[1], pos[0] + pos[1],  color='#646F4B', lw=0.8, alpha = 0.8, zorder = 5)
-        ax.vlines(dst, pos[0] - pos[1], pos[0] + pos[1],  color='#b4654a', lw=0.8, alpha = 0.8, zorder = 5)
-        ax.scatter(mpt, [pos[0]] * len(mpt) , s = 2, c = '#646F4B', alpha = 0.8, zorder = 10)
-        ax.scatter(mst, [pos[0]] * len(mst), s = 2, c = '#b4654a', alpha = 0.8, zorder = 10)
+        ax.plot(x, data, color='k', linewidth=0.04, zorder = 0)
+        ax.vlines(dpt, pos[0] - pos[1], pos[0] + pos[1],  color='c', lw=0.8, zorder = 5)
+        ax.vlines(dst, pos[0] - pos[1], pos[0] + pos[1],  color='m', lw=0.8, zorder = 5)
+        ax.scatter(mpt, [pos[0]] * len(mpt) , s = 7,edgecolors = 'none', facecolors = 'c', marker = 'o', zorder = 10)
+        ax.scatter(mst, [pos[0]] * len(mst), s = 7, edgecolors = 'none', facecolors = 'm', marker = 'P', zorder = 10)
 
         return ax
 
     plt.figure(figsize=(width,10))
     fig, (axZ, axN, axE) = plt.subplots(ncols=3)
 
-    for data in datadic.values():
+    for st, data in datadic.items():
+
         x = np.arange(start*60, end*60 + data['delta'], data['delta'])
         if 'dataZ' in data.keys():
             axZ = _plotCom(axZ, x, data['dataZ'], data['pos'], data['mpt'], data['mst'], data['dpt'], data['dst'])
@@ -173,6 +184,7 @@ def PlotEvent(datadic: dict, figf: str, start: float, end: float, theoy: list, t
         axN.plot(theos[i], theoy[i], color = 'm', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
         axE.plot(theop[i], theoy[i], color = 'c', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
         axE.plot(theos[i], theoy[i], color = 'm', lw = 0.5, alpha = 0.8, zorder = 15, linestyle = '--')
+        
     if evt != None:
         axZ.scatter(evt, evy, s = 5, c = 'red', alpha = 0.8, marker = '*', zorder = 15)
         axE.scatter(evt, evy, s = 5, c = 'red', alpha = 0.8, marker = '*', zorder = 15)
