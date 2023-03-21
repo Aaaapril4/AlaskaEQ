@@ -5,8 +5,9 @@ import calendar
 import numpy as np
 from loguru import logger
 from mpi4py import MPI
+from obspy.clients.filesystem.tsindex import Client as sql_client
+from obspy.clients.fdsn import Client as fdsn_client
 from obspy import UTCDateTime, read_inventory
-from obspy.clients.filesystem.tsindex import Client
 
 warnings.filterwarnings("ignore")
 
@@ -14,19 +15,19 @@ comm = MPI.COMM_WORLD  # pylint: disable=c-extension-no-member
 size = comm.Get_size()
 rank = comm.Get_rank()
 
-SEEDS = Path("/mnt/scratch/jieyaqi/alaska/data4phasenet")
+SEEDS = Path("/mnt/scratch/jieyaqi/alaska/test_190102")
 XMLS = Path("/mnt/scratch/jieyaqi/alaska/station")
 OUTPUTS = Path(
     "/mnt/scratch/jieyaqi/alaska/phasenet/test")
-client = Client("alaskatest.sqlite")
-
+sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/alaskatest.sqlite")
+iris_client = fdsn_client("IRIS")
 
 def remove_unused_list(process_list_this_rank_raw):
     # clean this rank
     filtered = []
     for index, net, sta, starttime, endtime in process_list_this_rank_raw:
         try:
-            numarray = len(client.get_availability(
+            numarray = len(sq_client.get_availability(
                 net, sta, "*", "*", starttime, endtime))
         except TypeError:
             logger.info(
@@ -68,10 +69,10 @@ def get_process_list_this_rank():
 
     starttime = UTCDateTime("2019-01-01T00:00:00")
     index = 0
-    staList = [".".join(f.name.split("/")[-1].split(".")[0:2]) for f in sorted(SEEDS.glob("*mseed"))]
+    staList = [".".join(f.name.split("/")[-1].split(".")[0:2]) for f in sorted(SEEDS.glob("*/*mseed"))]
     for s in set(staList):
         net, sta = s.split('.')
-        for month in range(1):
+        for month in range(2):
             endtime = starttime+calendar.monthrange(starttime.year, starttime.month)[1] * 60 * 60 * 24
             fname = OUTPUTS / \
                 f"{net}.{sta}.{starttime.year}-{starttime.month}.mseed"
@@ -87,49 +88,75 @@ def get_process_list_this_rank():
 
 
 def process_kernel(index, net, sta, starttime, endtime, total):
-    st = client.get_waveforms(
+    st = sq_client.get_waveforms(
         net, sta, "*", "*", starttime, endtime)
-    st_test = st.copy()
-    inconsisTr = None
-    try:
-        st_test.merge(method=1)
-    except:
-        inconsisTr = True
-        init_sr = int(st_test[0].stats['sampling_rate'])
-        st_test.interpolate(init_sr)
-        st_test.merge(method=1)
 
-    # check if mergable
-    masks = []
-    st_test.sort()
-    for i in range(len(st_test)):
-        if type(st_test[i].data) == np.ma.MaskedArray:
-            masks.append(st_test[i].data.mask)
-        else:
-            masks.append(np.zeros(len(st_test[i].data), dtype=bool))
-    # process
-    if inconsisTr == True:
-        st.interpolate(init_sr)
-    st.merge(method=1, fill_value="latest")
     st.detrend("linear")
     st.detrend("demean")
     st.taper(max_percentage=0.002, type="hann")
 
-    inv = read_inventory(XMLS/f"{net}.{sta}.xml")
     pre_filt = [0.01, 0.05, 20, 50]
+
+    inv = read_inventory(XMLS/f"{net}.{sta}.xml")
     try:
         st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
                     taper=False, inventory=inv)
     except ValueError:
-        logger.info(
-                    f"Cannot find instrumental response: {net}.{sta} {starttime}->{endtime}")
-        return
+        inv = iris_client.get_stations(
+                network = net,
+                station = sta,
+                channel = "HH?,BH?,EH?,SH?",
+                starttime = starttime,
+                endtime = endtime,
+                level='response'
+            )
+        try:
+            st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
+                        taper=False, inventory=inv)
+        except ValueError:
+            logger.info(
+                        f"Cannot find instrumental response: {net}.{sta} {starttime}->{endtime}")
+            return
+
+    st.interpolate(sampling_rate=40)
+    st.merge(method=1, fill_value="latest")
+
     # mask to 0
+    masks = []
     st.sort()
     for i in range(len(st)):
+        if type(st[i].data) == np.ma.MaskedArray:
+            masks.append(st[i].data.mask)
+        else:
+            masks.append(np.zeros(len(st[i].data), dtype=bool))
+
+    for i in range(len(st)):
         st[i].data[masks[i]] = 0
+    
     st.trim(starttime, endtime)
-    st.interpolate(sampling_rate=40)
+
+    # padding other channels
+    channels = []
+    for tr in st:
+        channels.append(tr.stats.channel[2])
+
+    if 'Z' not in channels:
+        trz = st[0].copy()
+        trz.data = np.zeros(len(trz.data))
+        trz.stats.channel = st[0].stats.channel[:2]+'Z'
+        st.append(trz)
+
+    if 'E' not in channels and '1' not in channels:
+        tre = st[0].copy()
+        tre.data = np.zeros(len(tre.data))
+        tre.stats.channel = st[0].stats.channel[:2]+'E'
+        st.append(tre)
+
+    if 'N' not in channels and '2' not in channels:
+        trn = st[0].copy()
+        trn.data = np.zeros(len(trn.data))
+        trn.stats.channel = st[0].stats.channel[:2]+'N'
+        st.append(trn)
 
     if len(st) > 0:
         logger.info(
