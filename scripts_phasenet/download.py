@@ -26,7 +26,7 @@ def download_station(id, start):
     end = start + calendar.monthrange(start.year, start.month)[1] * 60 * 60 * 24
     start = start.strftime('%Y%m%dT000000Z')
     end = end.strftime('%Y%m%dT000000Z')
-    channel = {'Z': ['HHZ', 'BHZ', 'EHZ'], '[1,E]': ['HH1,HHE', 'BH1,BHE', 'EH1,EHE'], '[2,N]': ['HH2,HHN', 'BH2,BHN', 'EH2,EHN']}
+    channel = {'Z': ['HHZ', 'BHZ', 'EHZ', 'SHZ'], '[1,E]': ['HH1,HHE', 'BH1,BHE', 'EH1,EHE', 'SH1,SHE'], '[2,N]': ['HH2,HHN', 'BH2,BHN', 'EH2,EHN', 'SH2,SHN']}
     for k,v in channel.items():
         name = f'{net}.{sta}.*.??{k}__{start}__{end}.mseed'
         file = Findfile(os.path.join(workdir, 'waveform', sta, name))
@@ -62,7 +62,7 @@ def download_station(id, start):
                 st[0].stats.channel + \
                 f'__{start}__{end}.mseed'
         logger.info(
-                f"Download data: {name}")
+                f"Download data [{os.getppid()}]: {name}")
         st.write(os.path.join(workdir, 'waveform', sta, name), format = 'mseed')
 
 
@@ -70,8 +70,8 @@ def download_station(id, start):
 if __name__ == '__main__':
     station = pd.read_csv(f'{workdir}/station.txt', delimiter = '|')
     station['id'] = station.apply(lambda x: f'{x["#Network"]}.{x["Station"]}', axis=1)
-    start = UTCDateTime(2018, 1, 1)
-    end = UTCDateTime(2020, 1, 1)
+    start = UTCDateTime(2019, 1, 1)
+    end = UTCDateTime(2019, 3, 1)
     
     sta = station['id'].to_numpy()
     startl = []
