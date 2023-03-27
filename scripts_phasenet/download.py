@@ -23,9 +23,9 @@ def Findfile(file):
 
 def download_station(id, start):
     net, sta = id.split('.')
-    end = start + calendar.monthrange(start.year, start.month)[1] * 60 * 60 * 24
-    start = start.strftime('%Y%m%dT000000Z')
-    end = end.strftime('%Y%m%dT000000Z')
+    end = start + calendar.monthrange(start.year, start.month)[1] * 60 * 60 * 24 - 1
+    start = start.strftime('%Y%m%dT%H%M%SZ')
+    end = end.strftime('%Y%m%dT%H%M%SZ')
     channel = {'Z': ['HHZ', 'BHZ', 'EHZ', 'SHZ'], '[1,E]': ['HH1,HHE', 'BH1,BHE', 'EH1,EHE', 'SH1,SHE'], '[2,N]': ['HH2,HHN', 'BH2,BHN', 'EH2,EHN', 'SH2,SHN']}
     for k,v in channel.items():
         name = f'{net}.{sta}.*.??{k}__{start}__{end}.mseed'
