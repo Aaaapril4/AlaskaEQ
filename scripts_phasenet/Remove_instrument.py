@@ -15,26 +15,18 @@ comm = MPI.COMM_WORLD  # pylint: disable=c-extension-no-member
 size = comm.Get_size()
 rank = comm.Get_rank()
 
-SEEDS = Path("/mnt/scratch/jieyaqi/alaska/test_190102")
+SEEDS = Path("/mnt/scratch/jieyaqi/alaska/test_190102_trimed")
 XMLS = Path("/mnt/scratch/jieyaqi/alaska/station")
 OUTPUTS = Path(
-    "/mnt/scratch/jieyaqi/alaska/phasenet/test")
-sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/alaskatest.sqlite")
+    "/mnt/scratch/jieyaqi/alaska/phasenet/data")
+sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/timeseries.sqlite")
 iris_client = fdsn_client("IRIS")
 
 def remove_unused_list(process_list_this_rank_raw):
     # clean this rank
     filtered = []
     for index, net, sta, starttime, endtime in process_list_this_rank_raw:
-        try:
-            numarray = len(sq_client.get_availability(
-                net, sta, "*", "*", starttime, endtime))
-        except TypeError:
-            logger.info(
-                f"IndexError: {net}.{sta} {starttime}->{endtime}")
-            continue
-        if numarray> 0:
-            filtered.append((index, net, sta, starttime, endtime))
+        filtered.append((index, net, sta, starttime, endtime))
     # collect all filtered
     filtered = comm.gather(filtered, root=0)
     # scatter
@@ -67,18 +59,20 @@ def get_process_list_this_rank():
     # from 2009-06-01 to 2010-12-31
     process_list = []
 
-    starttime = UTCDateTime("2019-01-01T00:00:00")
+    
     index = 0
     staList = [".".join(f.name.split("/")[-1].split(".")[0:2]) for f in sorted(SEEDS.glob("*/*mseed"))]
     for s in set(staList):
         net, sta = s.split('.')
+        starttime = UTCDateTime("2019-01-01T00:00:00")
         for month in range(2):
-            endtime = starttime+calendar.monthrange(starttime.year, starttime.month)[1] * 60 * 60 * 24
+            endtime = starttime+calendar.monthrange(starttime.year, starttime.month)[1] * 60 * 60 * 24 - 1
             fname = OUTPUTS / \
                 f"{net}.{sta}.{starttime.year}-{starttime.month}.mseed"
             if not fname.exists():
                 process_list.append((index, net, sta, starttime, endtime))
                 index += 1
+            starttime = endtime + 1
 
     process_list_this_rank_raw = np.array_split(process_list, size)[rank]
     process_list_this_rank, total = remove_unused_list(
@@ -88,9 +82,17 @@ def get_process_list_this_rank():
 
 
 def process_kernel(index, net, sta, starttime, endtime, total):
-    st = sq_client.get_waveforms(
-        net, sta, "*", "*", starttime, endtime)
+    try:
+        st = sq_client.get_waveforms(
+            net, sta, "*", "*", starttime, endtime)
+    except:
+        logger.info(
+                f"Cannot access data: {net}.{sta} {starttime}->{endtime}")
+        return
 
+    if len(st) == 0:
+        logger.info(
+                f"Cannot access data: {net}.{sta} {starttime}->{endtime}")
     st.detrend("linear")
     st.detrend("demean")
     st.taper(max_percentage=0.002, type="hann")
