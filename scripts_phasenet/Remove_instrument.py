@@ -20,7 +20,7 @@ XMLS = Path("/mnt/scratch/jieyaqi/alaska/station")
 OUTPUTS = Path(
     "/mnt/scratch/jieyaqi/alaska/phasenet/data")
 sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/timeseries.sqlite")
-iris_client = fdsn_client("IRIS")
+# iris_client = fdsn_client("IRIS")
 
 def remove_unused_list(process_list_this_rank_raw):
     # clean this rank
@@ -104,21 +104,24 @@ def process_kernel(index, net, sta, starttime, endtime, total):
         st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
                     taper=False, inventory=inv)
     except ValueError:
-        inv = iris_client.get_stations(
-                network = net,
-                station = sta,
-                channel = "HH?,BH?,EH?,SH?",
-                starttime = starttime,
-                endtime = endtime,
-                level='response'
-            )
-        try:
-            st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
-                        taper=False, inventory=inv)
-        except ValueError:
-            logger.info(
-                        f"Cannot find instrumental response: {net}.{sta} {starttime}->{endtime}")
-            return
+        logger.info(
+                    f"Cannot find instrumental response: {net}.{sta} {starttime}->{endtime}")
+        return
+        # inv = iris_client.get_stations(
+        #         network = net,
+        #         station = sta,
+        #         channel = "HH?,BH?,EH?,SH?",
+        #         starttime = starttime,
+        #         endtime = endtime,
+        #         level='response'
+        #     )
+        # try:
+        #     st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
+        #                 taper=False, inventory=inv)
+        # except ValueError:
+        #     logger.info(
+        #                 f"Cannot find instrumental response: {net}.{sta} {starttime}->{endtime}")
+        #     return
 
     st.interpolate(sampling_rate=40)
     st.merge(method=1, fill_value="latest")
