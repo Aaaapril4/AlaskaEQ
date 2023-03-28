@@ -126,6 +126,9 @@ def process_kernel(index, net, sta, starttime, endtime, total):
     st.interpolate(sampling_rate=40)
     st.merge(method=1, fill_value="latest")
 
+    if len(st) == 0:
+        logger.info(
+                f"Error processing data: {net}.{sta} {starttime}->{endtime}")
     # mask to 0
     masks = []
     st.sort()
