@@ -12,36 +12,38 @@ def PlotComponent(
         data: np.ndarray, 
         delta: float, 
         pickspt: dict,
-        title: str):
+        title: str,
+        source: str,
+        duration: int = 60):
     try:
         ax.plot(data, 'k', linewidth = 0.8)
     except:
         pass
-    ax.set_xlim(0, 120/delta) 
+    ax.set_xlim(0, duration/delta + 1) 
     ymin, ymax = ax.get_ylim()
     ax.set_title(title)
 
     ax.set_ylabel('Amplitude\nCounts')
-    ax.set_xticks(ticks=np.arange(0,120/delta+1, 20/delta))
-    ax.set_xticklabels(np.arange(0,120+1, 20))
+    ax.set_xticks(ticks=np.linspace(0,duration/delta+1, 6, dtype=int))
+    ax.set_xticklabels(np.linspace(0,duration, 6, dtype=int))
 
     if len(pickspt['pp']) != 0:
         ax.vlines(pickspt['pp'], [ymin]*len(pickspt['pp']), [ymax]*len(pickspt['pp']), color='c', linewidth=2, zorder = 5)
     if len(pickspt['mp']) != 0:
-        ax.scatter(pickspt['mp'], [0]*len(pickspt['mp']), color='c', marker='1', s = 50, zorder = 10)
+        ax.scatter(pickspt['mp'], [0]*len(pickspt['mp']), color='c', marker='X', s = 50, zorder = 10)
     if len(pickspt['ps']) != 0:
         ax.vlines(pickspt['ps'], [ymin]*len(pickspt['ps']), [ymax]*len(pickspt['ps']), color='m', linewidth=2, zorder = 5)
     if len(pickspt['ms']) != 0:
-        ax.scatter(pickspt['ms'], [0]*len(pickspt['ms']), color='m', marker='1', s = 50, zorder = 10)
+        ax.scatter(pickspt['ms'], [0]*len(pickspt['ms']), color='m', marker='X', s = 50, zorder = 10)
  
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     custom_lines = [Line2D([0], [0], color='k', lw=0),
                     Line2D([0], [0], color='c', lw=2),
                     Line2D([0], [0], color='m', lw=2),
-                    Line2D([0], [0], color='c', marker = '1', lw=0),
-                    Line2D([0], [0], color='m', marker = '1', lw=0)]
-    ax.legend(custom_lines, [com, 'PN-TF P', 'PN-TF S', 'ACE P', 'ACE S'], 
+                    Line2D([0], [0], color='c', marker = 'X', lw=0),
+                    Line2D([0], [0], color='m', marker = 'X', lw=0)]
+    ax.legend(custom_lines, [com, f'{source} P', f'{source} S', 'ACE P', 'ACE S'], 
                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
                 fancybox=True, shadow=True)
 
@@ -51,7 +53,9 @@ def PlotTime(figf: str,
              data: dict, 
              pickspt: dict, 
              delta: float,
-             prob: dict):
+             prob: dict,
+             source: str,
+             duration: int = 60):
     '''
     Plot picked phases (and manual picks) in time domain
 
@@ -81,26 +85,28 @@ def PlotTime(figf: str,
 
     # plot E component
     ax = fig.add_subplot(spec[0, 0])
-    PlotComponent(ax, come, data[come], delta, pickspt, figf.split("/")[-1])
+    PlotComponent(ax, come, data[come], delta, pickspt, figf.split("/")[-1], source, duration)
 
     # plot N component                    
     ax = fig.add_subplot(spec[1, 0])
-    PlotComponent(ax, comn, data[comn], delta, pickspt, figf.split("/")[-1])
+    PlotComponent(ax, comn, data[comn], delta, pickspt, figf.split("/")[-1], source, duration)
     
     # Plot Z component
     ax = fig.add_subplot(spec[2, 0]) 
-    PlotComponent(ax, comz, data[comz], delta, pickspt, figf.split("/")[-1])
+    PlotComponent(ax, comz, data[comz], delta, pickspt, figf.split("/")[-1], source, duration)
 
     # Plot probability
     ax = fig.add_subplot(spec[3, 0])
-    x = np.linspace(0, len(prob['p']), len(prob['p']), endpoint=True)
+    x = np.linspace(0, len(prob['p']), len(prob['p']), endpoint=True, dtype=int)
     plt.plot(x, np.array(prob['p']), '--', color='b', alpha = 0.5, linewidth=1.5, label='P_arrival')
     plt.plot(x, np.array(prob['s']), '--', color='r', alpha = 0.5, linewidth=1.5, label='S_arrival')
+    if 'eq' in prob.keys():
+        plt.plot(x, np.array(prob['eq']), '--', color='g', alpha = 0.5, linewidth=1.5, label='Earthquake')
         
     plt.tight_layout()       
     plt.ylim((-0.1, 1.1)) 
-    plt.xlim(0, 120 * 40)
-    plt.xticks(ticks=np.arange(0,4800+1, 800), labels=np.arange(0,120+1, 20))                                 
+    plt.xlim(0, len(prob['p']))
+    plt.xticks(ticks=np.linspace(0,len(prob['p']), 6, dtype=int), labels=np.linspace(0,duration, 6, dtype=int))                                 
     plt.ylabel('Probability') 
     plt.xlabel('Time')  
     legend_properties = {'weight':'bold'}     

@@ -1,55 +1,69 @@
 from sta import Sta
 import os
 from obspy import UTCDateTime
-import numpy as np
 from event import Event
 import pandas as pd
 from obspy.clients.filesystem.tsindex import Client
+import multiprocessing as mp
+from itertools import repeat
+import random
 
-def sort_manual_pick(mpickf: dict, etcol: int = 1, stacol: int = 7, arrivalcol: int = 9, phasecol: int = 10) -> None:
-    '''
-    Sort the phase picks into directory
-    '''
 
-    mpickdic = {}
-    etime, sta, arrival, phase = np.loadtxt(mpickf, dtype = str, skiprows=1, usecols=(etcol, stacol, arrivalcol, phasecol),unpack=True)
 
-    for i, t in enumerate(arrival):
-        if sta[i] not in mpickdic.keys():
-            mpickdic[sta[i]] = {'P':[], 'S':[]}
+def Process(stacls, manPicks, prePicks, lock = None, value = None):
+    fscore = stacls.CalFscoreSta(start = UTCDateTime(2019,1,1),
+                        end = UTCDateTime(2019,3,1),
+                        manPicks = manPicks,
+                        prePicks = prePicks,
+                        threshold = 1)
+    
+    for i in range(5):
+        t = UTCDateTime(random.choice(fscore['p']['TP']))
+        stacls.PlotPick(pickt = t,
+                        minf = 2, 
+                        maxf = 10,
+                        manPicks = manPicks,
+                        prePicks = prePicks)
+        t = UTCDateTime(random.choice(fscore['p']['FN']))
+        stacls.PlotPick(pickt = t,
+                        minf = 2, 
+                        maxf = 10,
+                        manPicks = manPicks,
+                        prePicks = prePicks)
+        t = UTCDateTime(random.choice(fscore['p']['FP']))
+        stacls.PlotPick(pickt = t,
+                        minf = 2, 
+                        maxf = 10,
+                        manPicks = manPicks,
+                        prePicks = prePicks)
         
-        if phase[i] == 'P':
-            mpickdic[sta[i]]['P'].append(UTCDateTime(etime[i])+float(t))
-        elif phase[i] == 'S':
-            mpickdic[sta[i]]['S'].append(UTCDateTime(etime[i])+float(t))
+    if lock != None:
+        with lock:
+            a = dict(value)
+            a['p']['TP'] += len(fscore['p']['TP'])
+            a['p']['FN'] += len(fscore['p']['FN'])
+            a['p']['FP'] += len(fscore['p']['FP'])
+            a['s']['TP'] += len(fscore['s']['TP'])
+            a['s']['FN'] += len(fscore['s']['FN'])
+            a['s']['FP'] += len(fscore['s']['FP'])
+            a['all']['TP'] += (len(fscore['p']['TP']) + len(fscore['s']['TP']))
+            a['all']['FN'] += (len(fscore['p']['FN']) + len(fscore['s']['FN']))
+            a['all']['FP'] += (len(fscore['p']['FP']) + len(fscore['s']['FP']))
+            a['manual']['p'] += fscore['manual']['p']
+            a['manual']['s'] += fscore['manual']['s']
+            a['predict']['p'] += fscore['predict']['p']
+            a['predict']['s'] += fscore['predict']['s']
 
-    return mpickdic
-
-
-
-def Process(stacls, manPicks, prePicks):
-
-    stacls.CalFscoreSta(start = UTCDateTime(2019,1,1),
-                     end = UTCDateTime(2019,3,1),
-                     manPicks = manPicks,
-                     prePicks = prePicks,
-                     threshold = 3)
-    stacls.PlotPick(pickt = UTCDateTime('2019-01-01T00:00:47.008000'),
-                    minf = 2, 
-                    maxf = 20,
-                    manPicks = manPicks,
-                    prePicks = prePicks)
-    # stacls.PlotPick(minf = 1, maxf = 20, start = UTCDateTime('2018-12-29T21:46:09.605000Z'), end = UTCDateTime('2018-12-29T21:50:09.605000Z'))
+            value.update(a)
     
 
 
 if __name__ == '__main__':
     Sta.workdir = '/mnt/scratch/jieyaqi/alaska/eqt/'
-    Sta.client = Client(f'{Sta.workdir}/alaska_removed.sqlite')
-    Sta.parameter = {'p': 0.1, 's': 0.1, 'earthquake': 0.2, 'ncpu': 40}
-    
-    Event.workdir = Sta.workdir
-    # Event.parameter = {'ncpu': 40}
+    Sta.client = Client('/mnt/scratch/jieyaqi/alaska/phasenet/timeseries.sqlite')
+    parameter = {'predict': {'p': 0.1, 's': 0.1, 'earthquake': 0.2}, 
+                 'filter': {'p': 0.3, 's': 0.3}, 
+                 'ncpu': 40}
     detdir = os.path.join(Sta.workdir, 'detections')
     stationjson = os.path.join(Sta.workdir, 'station_list.json')
     model = os.path.join(Sta.workdir, "EqT_original_model.h5")
@@ -67,9 +81,9 @@ if __name__ == '__main__':
             input_model=model, 
             stations_json=stationjson, 
             output_dir=detdir, 
-            detection_threshold=Sta.parameter['earthquake'], 
-            P_threshold=Sta.parameter['p'], 
-            S_threshold=Sta.parameter['s'], 
+            detection_threshold=parameter['predict']['earthquake'], 
+            P_threshold=parameter['predict']['p'], 
+            S_threshold=parameter['predict']['s'], 
             number_of_plots=0, 
             plot_mode='time', 
             overlap=0.3, 
@@ -84,16 +98,17 @@ if __name__ == '__main__':
     if not os.path.isfile(os.path.join(Sta.workdir, 'picks.csv')):
         prePicks = pd.read_csv(os.path.join(Sta.workdir, 'picks_raw.csv'))
         prePicksP = prePicks[["network", "station", "p_arrival_time", "p_probability"]]
-        prePicksP = prePicksP[prePicksP['p_probability'] > 0.3]
+        prePicksP = prePicksP[prePicksP['p_probability'] >= parameter['filter']['p']]
         prePicksP['type'] = 'P'
         prePicksP.columns = ["network", "station", "timestamp", "prob", "type"]
 
         prePicksS = prePicks[["network", "station", "s_arrival_time", "s_probability"]]
-        prePicksS = prePicksS[prePicksS['s_probability'] > 0.3]
+        prePicksS = prePicksS[prePicksS['s_probability'] >= parameter['filter']['s']]
         prePicksS['type'] = 'S'
         prePicksS.columns = ["network", "station", "timestamp", "prob", "type"]
         prePicks = pd.concat([prePicksP, prePicksS])
         prePicks['id'] = prePicks.apply(lambda x: f'{x["network"]}.{x["station"]}..BH'.replace(' ', ''), axis = 1)
+        prePicks['timestamp'] = prePicks['timestamp'].apply(lambda x: 'T'.join(x.split(' ')))
         prePicks.to_csv(os.path.join(Sta.workdir, 'picks.csv'),
                         index=False, 
                         float_format="%.3f",
@@ -102,16 +117,21 @@ if __name__ == '__main__':
         prePicks = pd.read_csv(os.path.join(Sta.workdir, 'picks.csv'))
 
     # process manual picks
-    manPicks = pd.read_csv('ManualPicks.csv', delimiter='\t')
+    manPicks = pd.read_csv('data/manualPicks.csv')
 
-    Process(stationCls['ACH'], manPicks, prePicks)
+    manager = mp.Manager()
+    lock = manager.Lock()
+    fscore_all = manager.dict({'p':{'TP': 0, 'FN': 0, 'FP': 0}, 
+                              's':{'TP': 0, 'FN': 0, 'FP':0},
+                              'all': {'TP': 0, 'FN': 0, 'FP': 0},
+                              'manual': {'p': 0, 's': 0},
+                              'predict': {'p': 0, 's': 0}})
+    
+    # with mp.Pool(1) as p:
+    with mp.Pool(parameter['ncpu']) as p:
+        p.starmap(Process, zip(stationCls.values(), repeat(manPicks), repeat(prePicks), repeat(lock), repeat(fscore_all)))
 
-    # with mp.Pool(Sta.parameter['ncpu']) as p:
-    #     p.starmap(Process, zip(stationCls.values(), [manpicks] * len(stationCls)))
-
-    # e = Event(lat = 56.4974, lon = -156.07, depth = 54.1, otime = UTCDateTime(2018,11,7,6,49,52,697), magnitude=2.7)
-    # e.Plot(stationCls, minf = 0.5, maxf = 20, amplifier = 8, start = -2, end = 5)
-
+    print(dict(fscore_all))
 
     # ev = [['2018-07-03T13:11:08.110000Z', 57.8147, -157.4748, 181.8], ['2018-07-03T13:14:03.409000Z', 57.0227, -157.9048, 6.4], ['2018-07-03T13:14:39.284000Z', 57.0462, -157.9138, 0.6], ['2018-07-03T13:15:37.829000Z', 57.0299, -157.9352, 6.1]]
     # ev = [['2018-07-03T13:10:57.975Z', 57.381054, -156.631388, 173.8], ['2018-07-03T13:10:59.430Z', 57.559745, -157.928308, 124.77], ['2018-07-03T13:13:19.868Z', 56.403366, -165.330413, 182.68],['2018-07-03T13:14:36.031', 57.071728, -157.869679, 63.4]]

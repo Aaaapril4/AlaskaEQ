@@ -1,3 +1,5 @@
+# To solve problem with obspy filesystem, no use anymore
+
 import os
 from obspy import UTCDateTime
 from loguru import logger
