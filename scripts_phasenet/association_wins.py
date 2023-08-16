@@ -121,7 +121,7 @@ def find_amp(picks, window = 12, ncpu = 10):
     return pickwamp.df
 
 ncpu = 20
-picks = pd.read_csv('/mnt/scratch/jieyaqi/alaska/phasenet/picks.csv')
+picks = pd.read_csv('/mnt/scratch/jieyaqi/alaska/phasenet_wins/picks.csv')
 picks['timestamp'] = picks['timestamp'].apply(lambda x: pd.Timestamp(x[:-1]))
 event = pd.read_csv('data/events.csv', delimiter='\t')
 stations = pd.read_csv('data/stations.csv')
@@ -201,12 +201,11 @@ picks = picks.merge(stations, "outer", on="id")
 picks = picks.dropna()
 
 # with open('catalogs_gamma_test.csv', 'w') as fp:
-with open('/mnt/scratch/jieyaqi/alaska/phasenet/catalogs_gamma.csv', 'w') as fp:
+with open('/mnt/scratch/jieyaqi/alaska/phasenet_wins/catalogs_gamma.csv', 'w') as fp:
     catalogs.to_csv(fp, index=False, 
                 float_format="%.3f",
                 date_format='%Y-%m-%dT%H:%M:%S.%f')
 # with open('picks_gamma_test.csv', 'w') as fp:
-with open('/mnt/scratch/jieyaqi/alaska/phasenet/picks_gamma.csv', 'w') as fp:
+with open('/mnt/scratch/jieyaqi/alaska/phasenet_wins/picks_gamma.csv', 'w') as fp:
     picks.to_csv(fp, index=False, 
                 date_format='%Y-%m-%dT%H:%M:%S.%f')
-

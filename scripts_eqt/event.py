@@ -8,12 +8,12 @@ _CalDist = lambda sla, slo, ola, olo: client.distaz(stalat=sla, stalon=slo, evtl
 
 
 class Event:
-    def __init__(self, lat: float, lon: float, depth: float, magnitude: float, otime: UTCDateTime) -> None:
+    def __init__(self, lat: float, lon: float, depth: float, otime: UTCDateTime, index: int) -> None:
         self.latitude = lat
         self.longitude = lon
         self.depth = depth
-        self.magnitude = magnitude
         self.otime = otime
+        self.index = index
 
 
 
@@ -27,14 +27,6 @@ class Event:
             result in km or degree
         '''
         result = _CalDist(stlat, stlon, self.latitude, self.longitude)
-        # from obspy.clients.iris import Client
-        # client = Client()
-        # if olat == None:
-        #     result = client.distaz(stalat=stlat, stalon=stlon, evtlat=self.latitude, evtlon=self.longitude)
-        # else:
-        #     result = client.distaz(stalat=stlat, stalon=stlon, evtlat=olat, evtlon=olon)
-
-        # return float(result['distance'])
         return [float(result['distancemeters']/1000), float(result['distance'])]
     
 
@@ -49,7 +41,7 @@ class Event:
 
         distd = {}
         for sta in stacls.values():
-            distd[sta.name] = self.CalDist(sta.latitude, sta.longitude)
+            distd[sta.station] = self.CalDist(sta.latitude, sta.longitude)
         distd = {k: v for k, v in sorted(distd.items(), key=lambda x: x[1][0])}
 
         theoy = []
@@ -67,19 +59,17 @@ class Event:
                 y = dist[0]
             # dist = self.CalDist(sta.latitude, sta.longitude)
             
-            data, delta = sta.GetData(start = self.otime + start * 60, end = self.otime + end * 60, minf = minf, maxf = maxf)
-            if delta == 0:
+            data = sta.GetData(start = self.otime + start * 60, end = self.otime + end * 60, minf = minf, maxf = maxf)
+            if data == None:
                 continue
-            dpt, dst, mpt, mst = sta.GetPicks(start = self.otime + start * 60, end = self.otime + end * 60, delta = delta)
+
+            picks = sta.GetPicks(start = self.otime + start * 60, end = self.otime + end * 60, index = self.index)
             
-            for i, t in enumerate(dpt):
-                dpt[i] = t * delta + start * 60
-            for i, t in enumerate(dst):
-                dst[i] = t * delta + start * 60
-            for i, t in enumerate(mpt):
-                mpt[i] = t * delta + start * 60
-            for i, t in enumerate(mst):
-                mst[i] = t * delta + start * 60
+            delta = list(data.values())[0].stats.delta
+            pickspt = {}
+            for k, v in picks.items():
+                pickspt[k] = (v - self.otime - start*60)/delta
+                pickspt[k] = [int(x) for x in pickspt[k]]
 
             arrivals = model.get_travel_times(source_depth_in_km=self.depth, distance_in_degree=dist[1], phase_list=['P', 'p', 'S', 's'])
             p = 0
@@ -87,30 +77,24 @@ class Event:
             theoy.append(y)
             for t in arrivals:
                 if (t.phase.name.lower() == 'p') and (p == 0):
-                    theop.append(t.time)
+                    theop.append((t.time - start*60)/delta)
                     p = 1
                 elif (t.phase.name.lower() == 's') and (s == 0):
-                    theos.append(t.time)
+                    theos.append((t.time - start*60)/delta)
                     s = 1
 
-            edata['dpt'] = dpt
-            edata['dst'] = dst
-            edata['mpt'] = mpt
-            edata['mst'] = mst
+            edata['picks'] = pickspt
             edata['pos'] = [y, amplifier]
 
             if data != None:
                 edata['delta'] = delta
-                for c, v in data.items():
-                    if 'Z' in c:
-                        edata['dataZ'] = v/max(v) * amplifier + y
-                    elif '1' in c or 'E' in c:
-                        edata['dataE'] = v/max(v) * amplifier + y
-                    elif '2' in c or 'N' in c:
-                        edata['dataN'] = v/max(v) * amplifier + y
-                eventData[sta.name] = edata
+                for k, v in data.items():
+                    d = v.data
+                    data[k] = d/(max(d)+1e-6) * amplifier + y
+                edata['data'] = data
+                eventData[sta.station] = edata
 
-        fig_name = os.path.join(figdir, f'{self.otime.__unicode__()}_{self.latitude}_{self.longitude}_{self.depth}_{self.magnitude}')
+        fig_name = os.path.join(figdir, f'{self.otime.__unicode__()}_{self.latitude}_{self.longitude}_{self.depth}')
         PlotEvent(eventData, fig_name, start, end, [theoy], [theop], [theos], 12)
 
 
@@ -213,4 +197,4 @@ class Event:
         theos = [list(x) for x in theos]
 
         fig_name = os.path.join(figdir, f'{start.__unicode__()}_{end.__unicode__()}_{olat}_{olon}')
-        PlotEvent(eventData, fig_name, 0, (end-start)/60, theoy, theop, theos, 20, evt, evy)
+        PlotEvent(eventData, fig_name, 0, (end-start)/60, theoy, theop, theos, evt, evy)

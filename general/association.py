@@ -7,55 +7,56 @@ from gamma.utils import association
 import subprocess
 from itertools import repeat
 import multiprocessing as mp
+from collections import defaultdict
 import time
 
-def _CalFscore(det: list, obs: list, start: UTCDateTime, end: UTCDateTime, threshold: float):
-    TP = []
-    FN = []
-    FP = []
-    utc2str = lambda x: x.__unicode__()
+def CalFscore(gamma_picks):
+    event_id_pool=set(gamma_picks.event_id)
+    event_index_pool=set(gamma_picks.event_index)
+    event_index = event_index_pool.difference(-1)
 
-    if det == None or len(det) == 0: 
-        if obs == None or len(obs) == 0:
-            pass
+    counter=defaultdict(int)
+    def count_func(row):
+        if row.event_index!=-1:
+            counter[(row.event_id,row.event_index)]+=1
+
+    gamma_picks.apply(count_func,axis=1)
+    status=[]
+    for key in counter:
+        status.append([counter[key],key[0],key[1]])
+    status.sort(reverse=True)
+
+    mapper={}
+    for _,event_id,event_index in status:
+        if event_id in event_id_pool and event_index in event_index_pool:
+            mapper[event_id]=event_index
+            event_id_pool.remove(event_id)
+            event_index_pool.remove(event_index)
+
+    # tp: row in gamma_picks satisfy mapper
+    # fp: row in gamma_picks not satisfy mapper
+    # fn: event_index is -1
+    tp,fp,fn=[0],[0],[0]
+    def count_confusion(row):
+        if row.event_index==-1:
+            fn[0]+=1
+        elif row.event_id in mapper and mapper[row.event_id]==row.event_index:
+            tp[0]+=1
         else:
-            i = 0
-            while i < len(obs):
-                if obs[i] >= start and obs[i] <= end:
-                    FN.append(utc2str(obs[i]))
-                i = i + 1
-    else:
-        if len(obs) == 0:
-            FP = [utc2str(i) for i in det]
-        else:
-            i = j = 0
-            TP = []
-            FN = []
-            FP = []
-            
-            while i < len(obs) and j < len(det) and obs[i] <= end:
-                if obs[i] < start:
-                    i = i + 1
-                    continue
-                elif abs(det[j]-obs[i]) <= threshold:
-                    TP.append(utc2str(det[j]))
-                    i = i + 1
-                    j = j + 1
-                elif obs[i] < det[j] - threshold:
-                    FN.append(utc2str(obs[i]))
-                    i = i + 1
-                elif obs[i] > det[j] + threshold:
-                    FP.append(utc2str(det[j]))
-                    j = j + 1
+            fp[0]+=1
+    gamma_picks.apply(count_confusion,axis=1);
 
-            while j < len(det):
-                FP.append(utc2str(det[j]))
-                j = j + 1
+    precision=tp[0]/(tp[0]+fp[0])
+    recall=tp[0]/(tp[0]+fn[0])
+    f1=2*precision*recall/(precision+recall)
+    print("precision: ",precision)
+    print("recall: ",recall)
+    print("f1: ",f1)
 
-            while i < len(obs) and obs[i] <= start:
-                FN.append(utc2str(obs[i]))
-                i = i + 1
-    return TP, FN, FP
+    print("tp: ",tp[0])
+    print("fp: ",fp[0])
+    print("fn: ",fn[0])
+    return 
 
 
 
@@ -121,10 +122,19 @@ def find_amp(picks, window = 12, ncpu = 10):
     return pickwamp.df
 
 ncpu = 20
-picks = pd.read_csv('/mnt/scratch/jieyaqi/alaska/phasenet/picks.csv')
+# picks = pd.read_csv('/mnt/scratch/jieyaqi/alaska/eqt/picks.csv')
+picks = pd.read_csv('data/manualPicks.csv')
 picks['timestamp'] = picks['timestamp'].apply(lambda x: pd.Timestamp(x[:-1]))
+picks['prob'] = 1
+# for test: 2018-10-19T00:14:10.815000Z
+# picks = picks[picks['timestamp'] > pd.Timestamp(2018, 10, 19, 0, 14)]
+# picks = picks[picks['timestamp'] < pd.Timestamp(2018, 10, 19, 0, 20)]
+# picks = picks[picks['timestamp'] >= pd.Timestamp(2018, 6, 1, 7, 51)]
+# picks = picks[picks['timestamp'] < pd.Timestamp(2018, 6, 1, 8, 1)]
 event = pd.read_csv('data/events.csv', delimiter='\t')
 stations = pd.read_csv('data/stations.csv')
+# picks = find_amp(picks, 120, ncpu)
+# picks = picks.dropna()
 
 picks = picks.sort_values("timestamp", ignore_index = True)
 d, Vpv, Vph, Vsv, Vsh = np.loadtxt("scripts_eqt/PREM.csv", usecols=(1, 3, 4, 5, 6), unpack=True, skiprows=1)
@@ -164,9 +174,9 @@ config["bfgs_bounds"] = (
     (None, None),  # t
 )
 config['initial_points'] = [1, 1, 2]
-config["dbscan_eps"] = 30
+config["dbscan_eps"] = 50
 config["dbscan_min_samples"] = 3
-config["min_picks_per_eq"] = 10
+config["min_picks_per_eq"] = 5
 config["min_p_picks_per_eq"] = 3
 config["min_s_picks_per_eq"] = 3
 config["max_sigma11"] = 5
@@ -200,13 +210,12 @@ picks = picks.join(assignments.set_index("pick_index")).fillna(-1).astype({'even
 picks = picks.merge(stations, "outer", on="id")
 picks = picks.dropna()
 
-# with open('catalogs_gamma_test.csv', 'w') as fp:
-with open('/mnt/scratch/jieyaqi/alaska/phasenet/catalogs_gamma.csv', 'w') as fp:
+with open('catalogs_gamma_test.csv', 'w') as fp:
+# with open('/mnt/scratch/jieyaqi/alaska/eqt/catalogs_gamma.csv', 'w') as fp:
     catalogs.to_csv(fp, index=False, 
                 float_format="%.3f",
                 date_format='%Y-%m-%dT%H:%M:%S.%f')
-# with open('picks_gamma_test.csv', 'w') as fp:
-with open('/mnt/scratch/jieyaqi/alaska/phasenet/picks_gamma.csv', 'w') as fp:
+with open('picks_gamma_test.csv', 'w') as fp:
+# with open('/mnt/scratch/jieyaqi/alaska/eqt/picks_gamma.csv', 'w') as fp:
     picks.to_csv(fp, index=False, 
                 date_format='%Y-%m-%dT%H:%M:%S.%f')
-

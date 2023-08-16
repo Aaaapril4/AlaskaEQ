@@ -10,60 +10,71 @@ import random
 
 
 
-def Process(stacls, manPicks, prePicks, lock = None, value = None):
-    fscore = stacls.CalFscoreSta(start = UTCDateTime(2019,1,1),
+def Process(stacls, lock = None, fscoreall_pre = None, fscoreall_aso = None):
+    fscore_pre, fscore_aso = stacls.CalFscoreSta(start = UTCDateTime(2019,1,1),
                         end = UTCDateTime(2019,3,1),
-                        manPicks = manPicks,
-                        prePicks = prePicks,
                         threshold = 1)
     
-    for i in range(5):
-        t = UTCDateTime(random.choice(fscore['p']['TP']))
-        stacls.PlotPick(pickt = t,
-                        minf = 2, 
-                        maxf = 10,
-                        manPicks = manPicks,
-                        prePicks = prePicks)
-        t = UTCDateTime(random.choice(fscore['p']['FN']))
-        stacls.PlotPick(pickt = t,
-                        minf = 2, 
-                        maxf = 10,
-                        manPicks = manPicks,
-                        prePicks = prePicks)
-        t = UTCDateTime(random.choice(fscore['p']['FP']))
-        stacls.PlotPick(pickt = t,
-                        minf = 2, 
-                        maxf = 10,
-                        manPicks = manPicks,
-                        prePicks = prePicks)
+    # for i in range(5):
+    #     if len(fscore_aso['p']['TP']) != 0:
+    #         t = UTCDateTime(random.choice(fscore_aso['p']['TP']))
+    #         stacls.PlotPick(start = t - 5,
+    #                         minf = 2, 
+    #                         maxf = 20)
+    #     if len(fscore_aso['p']['FN']) != 0:
+    #         t = UTCDateTime(random.choice(fscore_aso['p']['FN']))
+    #         stacls.PlotPick(start = t - 5,
+    #                         minf = 2, 
+    #                         maxf = 20)
+    #     if len(fscore_aso['p']['FP']) != 0:
+    #         t = UTCDateTime(random.choice(fscore_aso['p']['FP']))
+    #         stacls.PlotPick(start = t - 5,
+    #                         minf = 2, 
+    #                         maxf = 20)
         
     if lock != None:
         with lock:
-            a = dict(value)
-            a['p']['TP'] += len(fscore['p']['TP'])
-            a['p']['FN'] += len(fscore['p']['FN'])
-            a['p']['FP'] += len(fscore['p']['FP'])
-            a['s']['TP'] += len(fscore['s']['TP'])
-            a['s']['FN'] += len(fscore['s']['FN'])
-            a['s']['FP'] += len(fscore['s']['FP'])
-            a['all']['TP'] += (len(fscore['p']['TP']) + len(fscore['s']['TP']))
-            a['all']['FN'] += (len(fscore['p']['FN']) + len(fscore['s']['FN']))
-            a['all']['FP'] += (len(fscore['p']['FP']) + len(fscore['s']['FP']))
-            a['manual']['p'] += fscore['manual']['p']
-            a['manual']['s'] += fscore['manual']['s']
-            a['predict']['p'] += fscore['predict']['p']
-            a['predict']['s'] += fscore['predict']['s']
+            a = dict(fscoreall_pre)
+            a['p']['TP'] += len(fscore_pre['p']['TP'])
+            a['p']['FN'] += len(fscore_pre['p']['FN'])
+            a['p']['FP'] += len(fscore_pre['p']['FP'])
+            a['s']['TP'] += len(fscore_pre['s']['TP'])
+            a['s']['FN'] += len(fscore_pre['s']['FN'])
+            a['s']['FP'] += len(fscore_pre['s']['FP'])
+            a['all']['TP'] += (len(fscore_pre['p']['TP']) + len(fscore_pre['s']['TP']))
+            a['all']['FN'] += (len(fscore_pre['p']['FN']) + len(fscore_pre['s']['FN']))
+            a['all']['FP'] += (len(fscore_pre['p']['FP']) + len(fscore_pre['s']['FP']))
+            a['manual']['p'] += fscore_pre['manual']['p']
+            a['manual']['s'] += fscore_pre['manual']['s']
+            a['predict']['p'] += fscore_pre['predict']['p']
+            a['predict']['s'] += fscore_pre['predict']['s']
+            fscoreall_pre.update(a)
 
-            value.update(a)
+            a = dict(fscoreall_aso)
+            a['p']['TP'] += len(fscore_aso['p']['TP'])
+            a['p']['FN'] += len(fscore_aso['p']['FN'])
+            a['p']['FP'] += len(fscore_aso['p']['FP'])
+            a['s']['TP'] += len(fscore_aso['s']['TP'])
+            a['s']['FN'] += len(fscore_aso['s']['FN'])
+            a['s']['FP'] += len(fscore_aso['s']['FP'])
+            a['all']['TP'] += (len(fscore_aso['p']['TP']) + len(fscore_aso['s']['TP']))
+            a['all']['FN'] += (len(fscore_aso['p']['FN']) + len(fscore_aso['s']['FN']))
+            a['all']['FP'] += (len(fscore_aso['p']['FP']) + len(fscore_aso['s']['FP']))
+            a['manual']['p'] += fscore_aso['manual']['p']
+            a['manual']['s'] += fscore_aso['manual']['s']
+            a['predict']['p'] += fscore_aso['predict']['p']
+            a['predict']['s'] += fscore_aso['predict']['s']
+            fscoreall_aso.update(a)
     
 
 
 if __name__ == '__main__':
     Sta.workdir = '/mnt/scratch/jieyaqi/alaska/eqt/'
+    Event.workdir = Sta.workdir
     Sta.client = Client('/mnt/scratch/jieyaqi/alaska/phasenet/timeseries.sqlite')
     parameter = {'predict': {'p': 0.1, 's': 0.1, 'earthquake': 0.2}, 
-                 'filter': {'p': 0.3, 's': 0.3}, 
-                 'ncpu': 40}
+                 'filter': {'p': 0.5, 's': 0.5}, 
+                 'ncpu': 20}
     detdir = os.path.join(Sta.workdir, 'detections')
     stationjson = os.path.join(Sta.workdir, 'station_list.json')
     model = os.path.join(Sta.workdir, "EqT_original_model.h5")
@@ -118,24 +129,47 @@ if __name__ == '__main__':
 
     # process manual picks
     manPicks = pd.read_csv('data/manualPicks.csv')
+    asoPicks = pd.read_csv(os.path.join(Sta.workdir, 'picks_gamma.csv'))
 
+    Sta.manPicks = manPicks
+    Sta.prePicks = prePicks
+    Sta.asoPicks = asoPicks
+
+    ################################## Calculate F-score ##################################
     manager = mp.Manager()
     lock = manager.Lock()
-    fscore_all = manager.dict({'p':{'TP': 0, 'FN': 0, 'FP': 0}, 
+    fscore_pre = manager.dict({'p':{'TP': 0, 'FN': 0, 'FP': 0}, 
                               's':{'TP': 0, 'FN': 0, 'FP':0},
                               'all': {'TP': 0, 'FN': 0, 'FP': 0},
                               'manual': {'p': 0, 's': 0},
                               'predict': {'p': 0, 's': 0}})
     
-    # with mp.Pool(1) as p:
+    fscore_aso = manager.dict({'p':{'TP': 0, 'FN': 0, 'FP': 0}, 
+                              's':{'TP': 0, 'FN': 0, 'FP':0},
+                              'all': {'TP': 0, 'FN': 0, 'FP': 0},
+                              'manual': {'p': 0, 's': 0},
+                              'predict': {'p': 0, 's': 0}})
+    
     with mp.Pool(parameter['ncpu']) as p:
-        p.starmap(Process, zip(stationCls.values(), repeat(manPicks), repeat(prePicks), repeat(lock), repeat(fscore_all)))
+        p.starmap(Process, zip(stationCls.values(), repeat(lock), repeat(fscore_pre), repeat(fscore_aso)))
+    
+    precision_p = fscore_pre['p']['TP']/(fscore_pre['p']['TP']+fscore_pre['p']['FP'])
+    precision_s = fscore_pre['s']['TP']/(fscore_pre['s']['TP']+fscore_pre['s']['FP'])
+    precision_all = fscore_pre['all']['TP']/(fscore_pre['all']['TP']+fscore_pre['all']['FP'])
+    recall_p = fscore_pre['p']['TP']/(fscore_pre['p']['TP']+fscore_pre['p']['FN'])
+    recall_s = fscore_pre['s']['TP']/(fscore_pre['s']['TP']+fscore_pre['s']['FN'])
+    recall_all = fscore_pre['all']['TP']/(fscore_pre['all']['TP']+fscore_pre['all']['FN'])
+    print(dict(fscore_pre))
+    print(f'PREDICTION precision: p-{precision_p}, s-{precision_s}, all-{precision_all}, recall: p-{recall_p}, s-{recall_s}, all-{recall_all}')
+    
+    precision_p = fscore_aso['p']['TP']/(fscore_aso['p']['TP']+fscore_aso['p']['FP'])
+    precision_s = fscore_aso['s']['TP']/(fscore_aso['s']['TP']+fscore_aso['s']['FP'])
+    precision_all = fscore_aso['all']['TP']/(fscore_aso['all']['TP']+fscore_aso['all']['FP'])
+    recall_p = fscore_aso['p']['TP']/(fscore_aso['p']['TP']+fscore_aso['p']['FN'])
+    recall_s = fscore_aso['s']['TP']/(fscore_aso['s']['TP']+fscore_aso['s']['FN'])
+    recall_all = fscore_aso['all']['TP']/(fscore_aso['all']['TP']+fscore_aso['all']['FN'])
+    print(dict(fscore_aso))
+    print(f'ASSOCIATION precision: p-{precision_p}, s-{precision_s}, all-{precision_all}, recall: p-{recall_p}, s-{recall_s}, all-{recall_all}')
 
-    print(dict(fscore_all))
-
-    # ev = [['2018-07-03T13:11:08.110000Z', 57.8147, -157.4748, 181.8], ['2018-07-03T13:14:03.409000Z', 57.0227, -157.9048, 6.4], ['2018-07-03T13:14:39.284000Z', 57.0462, -157.9138, 0.6], ['2018-07-03T13:15:37.829000Z', 57.0299, -157.9352, 6.1]]
-    # ev = [['2018-07-03T13:10:57.975Z', 57.381054, -156.631388, 173.8], ['2018-07-03T13:10:59.430Z', 57.559745, -157.928308, 124.77], ['2018-07-03T13:13:19.868Z', 56.403366, -165.330413, 182.68],['2018-07-03T13:14:36.031', 57.071728, -157.869679, 63.4]]
-    # ev = [['2018-10-04T21:07:25.525000Z', 55.8117, -149.9031, 17.4], ['2018-10-04T21:07:38.887000Z', 55.7051, -149.7506, 15.2], ['2018-10-04T21:09:56.555000Z', 55.8112, -149.7632, 12.1], ['2018-10-04T21:12:19.770000Z', 55.8438, -149.6608, 12.2]]
-    # ev = [['2018-12-29T21:45:52.907000Z', 58.331100, -154.696500, 2.9], ['2018-12-29T21:46:09.605000Z', 58.334500, -154.665500, 1.5], ['2018-12-29T21:52:18.708000Z', 58.343500, -154.638800, 2.8]]
-    # event = ev[0]
-    # Event.PlotMultiEvent(ev, UTCDateTime(ev[0][0]), UTCDateTime(ev[0][0]) + 6*60, 55, -149, stationCls, 2, 20, 8, True)
+    # ev = Event(56.940,-152.612,11.959, UTCDateTime('2019-01-27T16:08:05.169'), 1)
+    # ev.Plot(stationCls, 2, 20, 8, 0, 5)

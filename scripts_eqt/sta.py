@@ -63,9 +63,11 @@ def _CalFscore(det: list, obs: list, start: UTCDateTime, end: UTCDateTime, thres
 
 
 class Sta:
-    def __init__(self, sta: str, net: str) -> None:
+    def __init__(self, sta: str, net: str, lat: float, lon: float) -> None:
         self.station = sta
         self.network = net
+        self.longitude = lon
+        self.latitude = lat
         self.id = f'{self.network}.{self.station}..BH'
 
     
@@ -77,7 +79,7 @@ class Sta:
                 maxf: float) -> dict:
 
         st = self.client.get_waveforms(
-                self.network, self.station, "*", "*", start, end)
+                self.network, self.station, "*", "*", start - 60, end + 60)
         
         if len(st) == 0:
             return None
@@ -85,6 +87,7 @@ class Sta:
         data = {}
         for tr in st:
             tr.filter(type='bandpass', freqmin = minf, freqmax = maxf)
+            tr.trim(start, end)
             data[tr.stats.channel] = tr
             
         return data
@@ -94,25 +97,36 @@ class Sta:
     def GetPicks(self, 
                  start: UTCDateTime, 
                  end: UTCDateTime,
-                 manPicks: pd.DataFrame,
-                 prePicks: pd.DataFrame):
+                 index: int = None):
 
-        manPicks = manPicks[manPicks['id'] == self.id]
+        manPicks = self.manPicks[self.manPicks['id'] == self.id]
         if len(manPicks) != 0 and isinstance(manPicks['timestamp'].to_numpy()[0], str):
             manPicks['timestamp'] = manPicks['timestamp'].apply(lambda x: UTCDateTime(x))
         manPicks = manPicks[manPicks['timestamp'] >= start]
         manPicks = manPicks[manPicks['timestamp'] <= end]
 
-        prePicks = prePicks[prePicks['id'] == self.id]
+        prePicks = self.prePicks[self.prePicks['id'] == self.id]
         if len(prePicks) != 0 and isinstance(prePicks['timestamp'].to_numpy()[0], str):
             prePicks['timestamp'] = prePicks['timestamp'].apply(lambda x: UTCDateTime('T'.join(x.split(' '))))
         prePicks = prePicks[prePicks['timestamp'] >= start]
         prePicks = prePicks[prePicks['timestamp'] <= end]
         
+        asoPicks = self.asoPicks[self.asoPicks['id'] == self.id]
+        if index == None:
+            asoPicks = asoPicks[asoPicks['event_index'] != -1]
+        else:
+            asoPicks = asoPicks[asoPicks['event_index'] == index]
+        if len(asoPicks) != 0 and isinstance(asoPicks['timestamp'].to_numpy()[0], str):
+            asoPicks['timestamp'] = asoPicks['timestamp'].apply(lambda x: UTCDateTime('T'.join(x.split(' '))))
+        asoPicks = asoPicks[asoPicks['timestamp'] >= start]
+        asoPicks = asoPicks[asoPicks['timestamp'] <= end]
+
         picks = {'pp': prePicks[prePicks["type"]=="P"]['timestamp'].to_numpy(),
                  'ps': prePicks[prePicks["type"]=="S"]['timestamp'].to_numpy(),
                  'mp': manPicks[manPicks["type"]=="P"]['timestamp'].to_numpy(),
-                 'ms': manPicks[manPicks["type"]=="S"]['timestamp'].to_numpy()}
+                 'ms': manPicks[manPicks["type"]=="S"]['timestamp'].to_numpy(),
+                 'ap': asoPicks[asoPicks["type"]=="P"]['timestamp'].to_numpy(),
+                 'as': asoPicks[asoPicks["type"]=="S"]['timestamp'].to_numpy()}
         return picks
 
 
@@ -155,16 +169,19 @@ class Sta:
     def CalFscoreSta(self, 
                    start: UTCDateTime, 
                    end: UTCDateTime,
-                   manPicks: pd.DataFrame,
-                   prePicks: pd.DataFrame, 
                    threshold: float) -> None:
-        picks = self.GetPicks(start, end, manPicks, prePicks)
+        picks = self.GetPicks(start, end)
 
         pTP, pFN, pFP = _CalFscore(picks['pp'], picks['mp'], start, end, threshold)
         sTP, sFN, sFP = _CalFscore(picks['ps'], picks['ms'], start, end, threshold)
 
-        fscore = {'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}, 'manual': {'p': len(picks['mp']), 's': len(picks['ms'])}, 'predict': {'p': len(picks['pp']), 's': len(picks['ps'])}}
-        return fscore
+        fscore_pre = {'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}, 'manual': {'p': len(picks['mp']), 's': len(picks['ms'])}, 'predict': {'p': len(picks['pp']), 's': len(picks['ps'])}}
+
+        pTP, pFN, pFP = _CalFscore(picks['ap'], picks['mp'], start, end, threshold)
+        sTP, sFN, sFP = _CalFscore(picks['as'], picks['ms'], start, end, threshold)
+
+        fscore_aso = {'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}, 'manual': {'p': len(picks['mp']), 's': len(picks['ms'])}, 'predict': {'p': len(picks['ap']), 's': len(picks['as'])}}
+        return fscore_pre, fscore_aso
 
 
 
@@ -188,7 +205,7 @@ class Sta:
                                    maxf = maxf)   
         if data == None:
             return      
-        picks = self.GetPicks(startt, startt + 60, manPicks, prePicks)
+        picks = self.GetPicks(startt, startt + 60)
 
         delta = list(data.values())[0].stats.delta
         pickspt = {}
@@ -214,7 +231,7 @@ class Sta:
 
         for i in range(len(sta)):
 
-            stationCls[sta[i]] = cls(sta[i], net[i])
+            stationCls[sta[i]] = cls(sta[i], net[i], lat[i], lon[i])
             stationList[sta[i]] = {}
             stationList[sta[i]]['network'] = net[i]
 
@@ -249,6 +266,6 @@ class Sta:
 
         stationCls = {}
         for sta, item in stationList.items():
-            stationCls[sta] = cls(sta, item['network'])
+            stationCls[sta] = cls(sta, item['network'], item['coords'][0], item['coords'][1])
 
         return stationCls

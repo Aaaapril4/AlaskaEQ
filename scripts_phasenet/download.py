@@ -23,7 +23,7 @@ def Findfile(file):
 
 def download_station(id, start):
     net, sta = id.split('.')
-    end = start + calendar.monthrange(start.year, start.month)[1] * 60 * 60 * 24 - 1
+    end = start + calendar.monthrange(start.year, start.month)[1] * 60 * 60 * 24 - 1e-6
     start = start.strftime('%Y%m%dT%H%M%SZ')
     end = end.strftime('%Y%m%dT%H%M%SZ')
     channel = {'Z': ['HHZ', 'BHZ', 'EHZ', 'SHZ'], '[1,E]': ['HH1,HHE', 'BH1,BHE', 'EH1,EHE', 'SH1,SHE'], '[2,N]': ['HH2,HHN', 'BH2,BHN', 'EH2,EHN', 'SH2,SHN']}
@@ -70,8 +70,8 @@ def download_station(id, start):
 if __name__ == '__main__':
     station = pd.read_csv(f'{workdir}/station.txt', delimiter = '|')
     station['id'] = station.apply(lambda x: f'{x["#Network"]}.{x["Station"]}', axis=1)
-    start = UTCDateTime(2019, 1, 1)
-    end = UTCDateTime(2019, 3, 1)
+    start = UTCDateTime(2018, 1, 1)
+    end = UTCDateTime(2024, 1, 1)
     
     sta = station['id'].to_numpy()
     startl = []
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     nsta = nsta.flatten()
     nt = nt.flatten()
 
-    with mp.Pool(10) as p:
+    with mp.Pool(20) as p:
         p.starmap(download_station, zip(nsta, nt))
     # download_station('XO.WD64', UTCDateTime('20190101T000000Z'))
     

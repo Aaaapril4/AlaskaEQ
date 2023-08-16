@@ -2,6 +2,7 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from loguru import logger
 from mpi4py import MPI
 from obspy.clients.filesystem.tsindex import Client as sql_client
@@ -13,11 +14,14 @@ warnings.filterwarnings("ignore")
 comm = MPI.COMM_WORLD  # pylint: disable=c-extension-no-member
 size = comm.Get_size()
 rank = comm.Get_rank()
-
-SEEDS = Path("/mnt/scratch/jieyaqi/alaska/test_190102_trimed")
+station = pd.read_csv('/mnt/scratch/jieyaqi/alaska/station.txt', delimiter='|')
+station['EndTime'] = station['EndTime'].fillna('2025-06-30T00:00:00')
+station['StartTime'] = station['StartTime'].apply(lambda x: UTCDateTime(x)) 
+station['EndTime'] = station['EndTime'].apply(lambda x: UTCDateTime(x)) 
 XMLS = Path("/mnt/scratch/jieyaqi/alaska/station")
+
 OUTPUTS = Path(
-    "/mnt/scratch/jieyaqi/alaska/phasenet/data_10day")
+    "/mnt/scratch/jieyaqi/alaska/phasenet/dataWIns")
 sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/timeseries.sqlite")
 # iris_client = fdsn_client("IRIS")
 
@@ -25,7 +29,15 @@ def remove_unused_list(process_list_this_rank_raw):
     # clean this rank
     filtered = []
     for index, net, sta, starttime, endtime in process_list_this_rank_raw:
-        filtered.append((index, net, sta, starttime, endtime))
+        try:
+            st = sq_client.get_availability(
+                net, sta, "*", "*", starttime - 60, endtime + 60)
+        except:
+            filtered.append((index, net, sta, starttime, endtime))
+        else:
+            if len(st) > 0:
+                filtered.append((index, net, sta, starttime, endtime))
+
     # collect all filtered
     filtered = comm.gather(filtered, root=0)
     # scatter
@@ -53,18 +65,25 @@ def remove_unused_list(process_list_this_rank_raw):
     return res_each_rank, total
 
 
-def get_process_list_this_rank():
+def get_process_list_this_rank(station):
     # get all array
     process_list = []
 
     start = UTCDateTime("2019-01-01T00:00:00")
+    end = UTCDateTime("2019-03-01T00:00:00")
+    station = station[station['StartTime'] < end]
+    station = station[station['EndTime'] > start]
     index = 0
-    staList = [".".join(f.name.split("/")[-1].split(".")[0:2]) for f in sorted(SEEDS.glob("*/*mseed"))]
-    for each in set(staList):
+    staList = list(station.apply(lambda x: f'{x["#Network"]}.{x["Station"]}', axis = 1))
+    trunk = 10
+    num = int(np.ceil((end - start)/ (60 * 60 * 24) / trunk))
+
+    for each in staList:
         net, sta = each.split('.')
-        for day in range(6):
-            starttime = start+60*60*24*day*10
-            endtime = start+60*60*24*(day*10+10)
+        for day in range(num):
+            starttime = start+60*60*24*day*trunk
+            endtime = start+60*60*24*(day*trunk+trunk)
+            endtime = min(endtime, end)
             fname = OUTPUTS / \
                 f"{net}.{sta}.{starttime.year}-{starttime.month}-{starttime.day}.mseed"
             if not fname.exists():
@@ -81,52 +100,33 @@ def get_process_list_this_rank():
 def process_kernel(index, net, sta, starttime, endtime, total):
     try:
         st = sq_client.get_waveforms(
-            net, sta, "*", "*", starttime, endtime)
+            net, sta, "*", "*", starttime - 60, endtime + 60)
     except:
         logger.info(
-                f"!Error accessing data: {net}.{sta} {starttime}->{endtime}")
+                f"[{rank}]: {index}/{total} !Error accessing data: {net}.{sta} {starttime}->{endtime}")
         return
 
     if len(st) == 0:
         logger.info(
-                f"!Error accessing data: {net}.{sta} {starttime}->{endtime}")
+                f"[{rank}]: {index}/{total} !Error accessing data: {net}.{sta} {starttime}->{endtime}")
         return
     st.detrend("linear")
     st.detrend("demean")
     st.taper(max_percentage=0.002, type="hann")
-
-    pre_filt = [0.01, 0.05, 20, 50]
-
-    inv = read_inventory(XMLS/f"{net}.{sta}.xml")
+    
     try:
-        st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
-                    taper=False, inventory=inv)
+        st.interpolate(sampling_rate=40)
     except ValueError:
-        logger.info(
-                f"!Error finding instrumental response: {net}.{sta} {starttime}->{endtime}")
-        return
-        # inv = iris_client.get_stations(
-        #         network = net,
-        #         station = sta,
-        #         channel = "HH?,BH?,EH?,SH?",
-        #         starttime = starttime,
-        #         endtime = endtime,
-        #         level='response'
-        #     )
-        # try:
-        #     st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
-        #                 taper=False, inventory=inv)
-        # except ValueError:
-        #     logger.info(
-        #                 f"Cannot find instrumental response: {net}.{sta} {starttime}->{endtime}")
-        #     return
-
-    st.interpolate(sampling_rate=40)
+        for tr in st:
+            try:
+                tr.interpolate(sampling_rate=40)
+            except ValueError:
+                st.remove(tr)
     st.merge(method=1, fill_value="latest")
 
     if len(st) == 0:
         logger.info(
-                f"!Error processing data: {net}.{sta} {starttime}->{endtime}")
+                f"[{rank}]: {index}/{total} !Error processing data: {net}.{sta} {starttime}->{endtime}")
         return
     
     # mask to 0
@@ -166,6 +166,7 @@ def process_kernel(index, net, sta, starttime, endtime, total):
         trn.stats.channel = st[0].stats.channel[:2]+'N'
         st.append(trn)
 
+    st.sort()
     if len(st) > 0:
         logger.info(
             f"[{rank}]: {index}/{total} {net}.{sta} {starttime}->{endtime}")
@@ -180,5 +181,5 @@ def process(process_list_this_rank, total):
 
 
 if __name__ == "__main__":
-    process_list_this_rank, total = get_process_list_this_rank()
+    process_list_this_rank, total = get_process_list_this_rank(station)
     process(process_list_this_rank, total)

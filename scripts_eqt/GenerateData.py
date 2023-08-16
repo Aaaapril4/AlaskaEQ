@@ -204,7 +204,7 @@ def DataPerSta(id, picks, station, event, config):
 
 
 if __name__ == '__main__':
-    picks = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/ManualPickswamp.csv', delimiter = '\t')
+    picks = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manualPicks.csv')
     picks['timestamp'] = picks['timestamp'].apply(lambda x: pd.Timestamp(x))
     station = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/stations.csv', delimiter = '\t')
     event = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/events.csv', delimiter = '\t')
