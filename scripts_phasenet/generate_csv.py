@@ -2,23 +2,24 @@ import pandas as pd
 from pathlib import Path
 from obspy import UTCDateTime
 
-def generate_csv(datadir: str, stationf: str, outfile: str):
+def generate_csv(datadir: str, stationf: str, outfile: str, starttime: str, endtime:str):
     data = Path(datadir)
     station = pd.read_csv(stationf, delimiter='|')
     staList = list(station.apply(lambda x: f'{x["Network"]}.{x["Station"]}', axis = 1))
-    starttime = UTCDateTime("2019-01-01T00:00:00")
-    endtime = UTCDateTime("2019-02-28T23:59:59")
+    starttime = UTCDateTime(starttime)
+    endtime = UTCDateTime(endtime)
     df = pd.DataFrame()
 
     for sta in staList:
-        stalist = sorted(list(data.glob(f'{sta}.*')))
-        if len(stalist) == 0:
+        mseedlist = list(data.glob(f'{sta}.*'))
+        mseedlist = sorted(mseedlist, key = lambda x: UTCDateTime(str(x).split('.')[2]))
+        if len(mseedlist) == 0:
             continue
-        net, st, start, _ = stalist[0].name.split('.')
+        net, st, start, _ = mseedlist[0].name.split('.')
         cur_start = UTCDateTime(start)
         cur_end = min(cur_start + 10 * 24 * 60 * 60, endtime)
 
-        for mseed in stalist[1:]:
+        for mseed in mseedlist[1:]:
             net, st, start, _ = mseed.name.split('.')
             start = UTCDateTime(start)
             end = min(start + 10 * 24 * 60 * 60, endtime)
@@ -50,4 +51,5 @@ def generate_csv(datadir: str, stationf: str, outfile: str):
     return
     
 if __name__ == '__main__':
-    generate_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/data1', '/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', '/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/statime1.csv')
+    for i in range(1, 53):
+        generate_csv(f'/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/data{i}', '/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', f'/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/statime{i}.csv', '2018-01-01T000000', '2022-12-31T235959')
