@@ -4,6 +4,7 @@ from obspy import UTCDateTime
 from pyproj import Proj
 from gamma.utils import association
 import time
+from pathlib import Path
 
 
 def filter_picks(picks: pd.DataFrame, ampP: float, ampS: float) -> pd.DataFrame:
@@ -18,7 +19,7 @@ def filter_picks(picks: pd.DataFrame, ampP: float, ampS: float) -> pd.DataFrame:
     picks = pd.concat([picksP, picksS])
     picks.columns = ["network", "station", "type", "timestamp", "prob"]
     picks['id'] = picks.apply(lambda x: f'{x["network"]}.{x["station"]}..BH'.replace(' ', ''), axis = 1) # I use BH for all for convinience
-    return picks[["id", "network", "station", "type", "timestamp", "prob"]]
+    return picks[["id", "type", "timestamp", "prob"]]
 
 
 def get_config() -> dict:
@@ -30,8 +31,8 @@ def get_config() -> dict:
     config["center"] = (-156, 55)
     config["xlim_degree"] = [-165, -147] # 1 or 2 degrees larger
     config["ylim_degree"] = [49, 61]
-    config["starttime"] = UTCDateTime("20190101T00:00:00")
-    config["endtime"] = UTCDateTime("20190228T23:59:59")
+    config["starttime"] = UTCDateTime("20180101T00:00:00")
+    config["endtime"] = UTCDateTime("20221231T23:59:59")
     config["z(km)"] = (0, 400)
     config["covariance_prior"] = [300, 300]
     config["vel"] = {"p": 6.0, "s": 6.0 / 1.75}
@@ -66,7 +67,7 @@ def get_config() -> dict:
 
     # uncomment if you choose to use 1D velocity model
     # Alaska model (averaged from Fan Wang's model)
-    d, Vp, Vs = np.loadtxt("data/alaska.csv", usecols=(0, 1, 2), unpack=True, skiprows=1, delimiter=',')
+    d, Vp, Vs = np.loadtxt("/mnt/home/jieyaqi/code/AlaskaEQ/data/alaska.csv", usecols=(0, 1, 2), unpack=True, skiprows=1, delimiter=',')
     # PREM model
     # d, Vpv, Vph, Vsv, Vsh = np.loadtxt("PREM.csv", usecols=(1, 3, 4, 5, 6), unpack=True, skiprows=1)
     # Vp = np.sqrt((Vpv**2 + 4 * Vph**2)/5)
@@ -79,14 +80,15 @@ def get_config() -> dict:
     return config, proj
     
 
-picks = pd.read_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/picks_raw.csv')
+workdir = Path('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2')
+picks = pd.read_csv(workdir / 'picks_raw.csv')
 picks = filter_picks(picks, 0.5, 0.5)
 picks['timestamp'] = picks['timestamp'].apply(lambda x: pd.Timestamp(x[:-1]))
 picks = picks.sort_values("timestamp", ignore_index = True)
 
 config, proj = get_config()
 
-stations = pd.read_csv('data/stations.csv')
+stations = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/stations.csv')
 stations[["x(km)", "y(km)"]] = stations.apply(lambda x: pd.Series(proj(longitude=x.longitude, latitude=x.latitude)), axis=1)
 stations["z(km)"] = stations["elevation(m)"].apply(lambda x: -x/1e3)
 
@@ -112,12 +114,11 @@ picks = picks.join(assignments.set_index("pick_index")).fillna(-1).astype({'even
 picks = picks.merge(stations, "outer", on="id")
 picks = picks.dropna()
 
-with open('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/catalogs_gamma.csv', 'w') as fp:
+with open(workdir / 'catalogs_gamma.csv', 'w') as fp:
     catalogs.to_csv(fp, index=False, 
                 float_format="%.3f",
                 date_format='%Y-%m-%dT%H:%M:%S.%f')
 
-with open('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/picks_gamma.csv', 'w') as fp:
+with open(workdir / 'picks_gamma.csv', 'w') as fp:
     picks.to_csv(fp, index=False, 
                 date_format='%Y-%m-%dT%H:%M:%S.%f')
-

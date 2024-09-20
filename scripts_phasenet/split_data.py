@@ -12,7 +12,7 @@ rank = comm.Get_rank()
 basedir = '/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2'
 root = Path(basedir)
 datad = root / "data"
-nperdir = 300
+nperdir = 130
 
 
 def get_process_list_this_rank(process_list: list):
@@ -21,6 +21,7 @@ def get_process_list_this_rank(process_list: list):
     '''
     comm.Barrier()
     if rank == 0:
+        print(len(process_list), size)
         process_list_this_rank = np.array_split(process_list, size)
     else:
         process_list_this_rank = None
@@ -64,16 +65,12 @@ if __name__ == "__main__":
             resultp.mkdir(parents=True, exist_ok=True)
             dirmap[i] = datap
     else:
-        mseedl = None
         dirmap = None
         ndir = None
-        mseed_this_rank = None
     
+    comm.Barrier()
     dirmap = comm.bcast(dirmap, root = 0)
     ndir = comm.bcast(ndir, root = 0)
-    mseed_this_rank = get_process_list_this_rank(mseedl)
-
-    distribute_mseed_rank(mseed_this_rank, ndir, dirmap)
 
     dirnum_this_rank = get_process_list_this_rank(range(1, ndir + 1))
     process_dir_rank(dirnum_this_rank, dirmap)
