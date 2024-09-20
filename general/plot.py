@@ -18,7 +18,7 @@ def PlotComponent(
 
     ax.plot(data, 'k', linewidth = 0.8)
 
-    ax.set_xlim(0, duration/delta + 1) 
+    ax.set_xlim(0, duration/delta + 1)
     ymin, ymax = ax.get_ylim()
     ax.set_title(title)
 
@@ -27,11 +27,19 @@ def PlotComponent(
     ax.set_xticklabels(np.linspace(0,duration, 6, dtype=int))
 
     if len(pickspt['pp']) != 0:
-        ax.vlines(pickspt['pp'], [ymin]*len(pickspt['pp']), [ymax]*len(pickspt['pp']), color='c', linewidth=2, zorder = 5)
+        ax.vlines(pickspt['pp'], [-0.5]*len(pickspt['pp']), [0.5]*len(pickspt['pp']), color='c', linewidth=2, zorder = 5, alpha=0.5)
+    if len(pickspt['ap']) != 0:
+        ax.vlines(pickspt['ap'], [-0.75]*len(pickspt['ap']), [0.75]*len(pickspt['ap']), color='c', linewidth=2, linestyles = 'dashed', zorder = 5, alpha=0.7)
+    if len(pickspt['rp']) != 0:
+        ax.vlines(pickspt['rp'], [-1]*len(pickspt['rp']), [1]*len(pickspt['rp']), color='c', linewidth=2, linestyles = 'dotted', zorder = 5, alpha=0.9)
     if len(pickspt['mp']) != 0:
         ax.scatter(pickspt['mp'], [0]*len(pickspt['mp']), color='c', marker='X', s = 50, zorder = 10)
     if len(pickspt['ps']) != 0:
-        ax.vlines(pickspt['ps'], [ymin]*len(pickspt['ps']), [ymax]*len(pickspt['ps']), color='m', linewidth=2, zorder = 5)
+        ax.vlines(pickspt['ps'], [-0.5]*len(pickspt['ps']), [0.5]*len(pickspt['ps']), color='m', linewidth=2, zorder = 5, alpha=0.5)
+    if len(pickspt['as']) != 0:
+        ax.vlines(pickspt['as'], [-0.75]*len(pickspt['as']), [0.75]*len(pickspt['as']), color='m', linewidth=2, linestyles = 'dashed', zorder = 5, alpha=0.7)
+    if len(pickspt['rs']) != 0:
+        ax.vlines(pickspt['rs'], [-1]*len(pickspt['rs']), [1]*len(pickspt['rs']), color='m', linewidth=2, linestyles = 'dotted', zorder = 5, alpha=0.9)
     if len(pickspt['ms']) != 0:
         ax.scatter(pickspt['ms'], [0]*len(pickspt['ms']), color='m', marker='X', s = 50, zorder = 10)
  
@@ -45,6 +53,7 @@ def PlotComponent(
     ax.legend(custom_lines, [com, f'{source} P', f'{source} S', 'ACE P', 'ACE S'], 
                 loc='center left', bbox_to_anchor=(1.01, 0.5), 
                 fancybox=True, shadow=True)
+    ax.set_ylim((-1, 1)) 
 
     
 
@@ -153,22 +162,36 @@ def PlotTimePNTF(figf: str,
         pickspt: dict,
         duration: int = 60):
 
-        ax.plot(data, 'k', linewidth = 0.8)
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.4) 
+        ax.plot(data, 'k', linewidth = 0.2)
 
         ax.set_ylim([-1,1])
+        ax.tick_params(axis='both', length=3, width=0.4)
         ax.set_yticks(np.arange(-1, 1.1, step=0.5))
         ax.set_yticklabels([])
         ax.set_ylabel('Amplitude')
-        ax.text(4, 0.8, com)
+        ax.text(4, 0.7, com)
 
-        if len(pickspt['pp']) != 0:
-            ax.vlines(pickspt['pp'], [-1]*len(pickspt['pp']), [1]*len(pickspt['pp']), color='c', linewidth=2, zorder = 5)
-        if len(pickspt['mp']) != 0:
-            ax.scatter(pickspt['mp'], [0]*len(pickspt['mp']), color='c', marker='X', s = 50, zorder = 10)
-        if len(pickspt['ps']) != 0:
-            ax.vlines(pickspt['ps'], [-1]*len(pickspt['ps']), [1]*len(pickspt['ps']), color='m', linewidth=2, zorder = 5)
-        if len(pickspt['ms']) != 0:
-            ax.scatter(pickspt['ms'], [0]*len(pickspt['ms']), color='m', marker='X', s = 50, zorder = 10)
+        if pickspt != None:
+            # if len(pickspt['pp']) != 0:
+            #     ax.vlines(pickspt['pp'], [-0.5]*len(pickspt['pp']), [0.5]*len(pickspt['pp']), color='c', linewidth=2, zorder = 5, alpha=0.5)
+            # if len(pickspt['ap']) != 0:
+            #     ax.vlines(pickspt['ap'], [-0.75]*len(pickspt['ap']), [0.75]*len(pickspt['ap']), color='c', linewidth=2, linestyles = 'dashed', zorder = 5, alpha=0.7)
+            # if len(pickspt['rp']) != 0:
+            #     ax.vlines(pickspt['rp'], [-1]*len(pickspt['rp']), [1]*len(pickspt['rp']), color='c', linewidth=2, linestyles = 'dotted', zorder = 5, alpha=0.9)
+            if len(pickspt['mp']) != 0:
+                ax.vlines(pickspt['mp'], [-1]*len(pickspt['mp']), [1]*len(pickspt['mp']), color='b', linewidth=0.4, linestyles = '--', zorder = 5)
+                # ax.scatter(pickspt['mp'], [0]*len(pickspt['mp']), color='c', marker='X', s = 50, zorder = 10)
+            # if len(pickspt['ps']) != 0:
+            #     ax.vlines(pickspt['ps'], [-0.5]*len(pickspt['ps']), [0.5]*len(pickspt['ps']), color='m', linewidth=2, zorder = 5, alpha=0.5)
+            # if len(pickspt['as']) != 0:
+            #     ax.vlines(pickspt['as'], [-0.75]*len(pickspt['as']), [0.75]*len(pickspt['as']), color='m', linewidth=2, linestyles = 'dashed', zorder = 5, alpha=0.7)
+            # if len(pickspt['rs']) != 0:
+            #     ax.vlines(pickspt['rs'], [-1]*len(pickspt['rs']), [1]*len(pickspt['rs']), color='m', linewidth=2, linestyles = 'dotted', zorder = 5, alpha=0.9)
+            if len(pickspt['ms']) != 0:
+                ax.vlines(pickspt['ms'], [-1]*len(pickspt['ms']), [1]*len(pickspt['ms']), color='r', linewidth=0.4, linestyles = '--', zorder = 5)
+                # ax.scatter(pickspt['ms'], [0]*len(pickspt['ms']), color='m', marker='X', s = 50, zorder = 10)
     
     def PlotSpectogram(
         ax, 
@@ -178,17 +201,31 @@ def PlotTimePNTF(figf: str,
         delta: float, 
         pickspt: dict,
         duration: int = 60):
-
+        
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.4) 
         ax.imshow(data,
                  aspect='auto',
                  cmap='jet',
                  origin='lower',
                  vmax = vmax,
-                 extent=[0,duration*40] + freq_range)
+                 extent=[0,duration*40] + freq_range,
+                 zorder=0)
+        ax.tick_params(axis='both', length=3, width=0.4)
+        ax.minorticks_on()
+        ax.tick_params(axis='both', which='minor', length=2, width=0.4)
+        if len(pickspt['mp']) != 0:
+            ax.vlines(pickspt['mp'], [freq_range[0]]*len(pickspt['mp']), [freq_range[1]]*len(pickspt['mp']), color='b', linewidth=0.4, linestyles = '--', zorder = 5)
+        if len(pickspt['ms']) != 0:
+            ax.vlines(pickspt['ms'], [freq_range[0]]*len(pickspt['ms']), [freq_range[1]]*len(pickspt['ms']), color='r', linewidth=0.4, linestyles = '--', zorder = 5)
         ax.set_ylabel('Frequency (Hz)')
         
+    fig, ax = plt.subplots(7,1, sharex=True, figsize=(6, 6))    
+    
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
+    plt.rcParams["font.size"] = 7
 
-    fig, ax = plt.subplots(7,1, sharex=True, figsize=(12, 18))    
     come = comn = comz = None
     for c in data.keys():
         if c[2] == 'E' or c[2] == '1':
@@ -199,39 +236,58 @@ def PlotTimePNTF(figf: str,
             comz = c
 
     # plot E component
-    PlotWaveform(ax[0], come, data[come], delta, pickspt, duration)
-    PlotSpectogram(ax[1], come, sgrams[come][0], vmax[come], delta, pickspt, duration)
+    if come:
+        PlotWaveform(ax[0], come[2], data[come], delta, pickspt, duration)
+        PlotSpectogram(ax[1], come[2], sgrams[come][0], vmax[come], delta, pickspt, duration)
 
-    # plot N component                    
-    PlotWaveform(ax[2], comn, data[comn], delta, pickspt, duration)
-    PlotSpectogram(ax[3], comn, sgrams[comn][0], vmax[comn], delta, pickspt, duration)
+    # plot N component     
+    if comn:               
+        PlotWaveform(ax[2], comn[2], data[comn], delta, pickspt, duration)
+        PlotSpectogram(ax[3], comn[2], sgrams[comn][0], vmax[comn], delta, pickspt, duration)
     
     # Plot Z component
-    PlotWaveform(ax[4], comz, data[comz], delta, pickspt, duration)
-    PlotSpectogram(ax[5], comz, sgrams[comz][0], vmax[comz], delta, pickspt, duration)
+    if comz:
+        PlotWaveform(ax[4], comz[2], data[comz], delta, pickspt, duration)
+        PlotSpectogram(ax[5], comz[2], sgrams[comz][0], vmax[comz], delta, pickspt, duration)
 
+    for spine in ax[6].spines.values():
+        spine.set_linewidth(0.4) 
     # Plot probability
-    x = np.linspace(0, len(prob['p']), len(prob['p']), endpoint=True, dtype=int)
-    ax[6].plot(x, np.array(prob['p']), '--', color='b', alpha = 0.5, linewidth=1.5, label='P_arrival')
-    ax[6].plot(x, np.array(prob['s']), '--', color='r', alpha = 0.5, linewidth=1.5, label='S_arrival')
-    if 'eq' in prob.keys():
-        ax[6].plot(x, np.array(prob['eq']), '--', color='g', alpha = 0.5, linewidth=1.5, label='Earthquake')
-    ax[6].set_ylim((-0.1, 1.1)) 
-    ax[6].set_ylabel('Probability') 
+    if prob != None:
+        x = np.linspace(0, len(prob['p']), len(prob['p']), endpoint=True, dtype=int)
+        ax[6].plot(x, np.array(prob['p']), '-', color='b', alpha = 1, linewidth=0.4)
+        ax[6].plot(x, np.array(prob['s']), '-', color='r', alpha = 1, linewidth=0.4)
+        if len(pickspt['mp']) != 0:
+            ax[6].vlines(pickspt['mp'], [0]*len(pickspt['mp']), [1]*len(pickspt['mp']), color='b', linewidth=0.4, linestyles = '--', zorder = 5)
+        if len(pickspt['ms']) != 0:
+            ax[6].vlines(pickspt['ms'], [0]*len(pickspt['ms']), [1]*len(pickspt['ms']), color='r', linewidth=0.4, linestyles = '--', zorder = 5)
+    ax[6].set_ylim((0, 1)) 
+    ax[6].set_ylabel('Probability',) 
+    ax[6].tick_params(axis='both', length=3, width=0.4)
     ax[6].set_yticks(np.arange(0, 1.1, step=0.2))
-    ax[6].set_xlabel('Time (s)')
+    ax[6].minorticks_on()
+    ax[6].set_yticks(np.arange(0, 1.1, step=0.1), minor=True)
+    ax[6].tick_params(axis='both', which='minor', length=2, width=0.4)
+    ax[6].set_xlabel('Time (s)',)
 
-    custom_lines = [Line2D([0], [0], color='c', lw=2),
-        Line2D([0], [0], color='m', lw=2),
-        Line2D([0], [0], color='c', marker = 'X', lw=0),
-        Line2D([0], [0], color='m', marker = 'X', lw=0),
-        Line2D([0], [0], color='b', lw=1.5, ls='--'),
-        Line2D([0], [0], color='r', lw=1.5, ls='--')]
-    ax[6].legend(custom_lines, [f'PN-TF P', f'PN-TF S', 'ACE P', 'ACE S', 'P Arrival', 'S Arrival'], 
-        loc=0)
+    custom_lines = [Line2D([0], [0], color='b', lw=0.4),
+        Line2D([0], [0], color='r', lw=0.4),
+        Line2D([0], [0], color='b', lw=0.4, ls='--'),
+        Line2D([0], [0], color='r', lw=0.4, ls='--')]
+    legend = ax[6].legend(custom_lines, ['Predicted P', 'Predicted S', 'Manually picked P', 'Manually picked S'],
+        loc='upper right', bbox_to_anchor=(1, 1), borderaxespad=0,
+        fontsize='small',   
+        handlelength=1.5,  
+        handletextpad=0.4,  
+        markerscale=0.5,
+        edgecolor='black')
+    legend.get_frame().set_linewidth(0.4)
     
-    ax[0].set_xticks(ticks=np.linspace(0,duration/delta+1, 6, dtype=int))
-    ax[0].set_xticklabels(np.linspace(0,duration, 6, dtype=int))
+    ax[0].tick_params(axis='x', length=3, width=0.4)
+    ax[0].set_xticks(ticks=np.linspace(0,duration/delta+1, 7, dtype=int))
+    ax[0].set_xticklabels(np.linspace(0,duration, 7, dtype=int))
+    ax[0].set_xticks(ticks=np.linspace(0,duration/delta+1, 25, dtype=int), minor=True)
+    ax[0].tick_params(axis='x', which='minor', length=2, width=0.4)
     ax[0].set_xlim(0, duration/delta + 1)
     ax[0].set_title(figf.split('/')[-1])
         
@@ -287,11 +343,14 @@ def PlotEvent(
         
         ax.plot(data, color='k', linewidth=0.01, zorder = 0)
 
-        ax.vlines(pickspt['pp'], pos[0] - pos[1], pos[0] + pos[1],  color='c', lw=1.5, zorder = 5, alpha=0.4)
-        ax.vlines(pickspt['ps'], pos[0] - pos[1], pos[0] + pos[1],  color='m', lw=1.5, zorder = 5, alpha=0.4)
+        ax.vlines(pickspt['pp'], pos[0] - 0.5*pos[1], pos[0] + 0.5*pos[1],  color='c', lw=1.5, zorder = 5, alpha=0.5)
+        ax.vlines(pickspt['ps'], pos[0] - 0.5*pos[1], pos[0] + 0.5*pos[1],  color='m', lw=1.5, zorder = 5, alpha=0.5)
 
-        ax.vlines(pickspt['ap'], pos[0] - pos[1], pos[0] + pos[1],  color='c', lw=1.5, zorder = 5)
-        ax.vlines(pickspt['as'], pos[0] - pos[1], pos[0] + pos[1],  color='m', lw=1.5, zorder = 5)
+        ax.vlines(pickspt['ap'], pos[0] - 0.75*pos[1], pos[0] + 0.75*pos[1],  color='c', lw=1.5, zorder = 5, linestyles = 'dashed', alpha=0.7)
+        ax.vlines(pickspt['as'], pos[0] - 0.75*pos[1], pos[0] + 0.75*pos[1],  color='m', lw=1.5, zorder = 5, linestyles = 'dashed', alpha=0.7)
+
+        ax.vlines(pickspt['rp'], pos[0] - pos[1], pos[0] + pos[1],  color='c', lw=1.5, zorder = 5, linestyles = 'dotted', alpha=0.9)
+        ax.vlines(pickspt['rs'], pos[0] - pos[1], pos[0] + pos[1],  color='m', lw=1.5, zorder = 5, linestyles = 'dotted', alpha=0.9)
         
         ax.scatter(pickspt['mp'], [pos[0]] * len(pickspt['mp']) , s = 20,edgecolors = 'none', facecolors = 'c', marker = 'X', zorder = 10)
         ax.scatter(pickspt['ms'], [pos[0]] * len(pickspt['ms']), s = 20, edgecolors = 'none', facecolors = 'm', marker = 'X', zorder = 10)

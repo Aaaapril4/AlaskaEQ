@@ -1,6 +1,7 @@
 from obspy import UTCDateTime
 from plot import PlotEvent
 import os
+import h5py
 from obspy.taup import TauPyModel
 from obspy.clients.iris import Client
 client = Client()
@@ -31,6 +32,72 @@ class Event:
     
 
 
+    def SaveData(self, stacls: dict, start, end, order):
+        stead = h5py.File('/mnt/scratch/jieyaqi/alaska/phasenet/plotdata.hdf5', 'a')
+        evdata = stead.create_group(self.index)
+        model = TauPyModel(model="PREM")
+        eventData = {}
+
+        distd = {}
+        for sta in stacls.values():
+            distd[sta.station] = self.CalDist(sta.latitude, sta.longitude)
+        distd = {k: v for k, v in sorted(distd.items(), key=lambda x: x[1][0])}
+
+        theoy = []
+        theop = []
+        theos = []
+
+        # for sta in stacls.values():
+        for num, st in enumerate(distd.keys()):
+            sta = stacls[st]
+            dist = distd[st]
+            edata = {}
+            if order:
+                y = num + 1
+            else:
+                y = dist[0]
+            # dist = self.CalDist(sta.latitude, sta.longitude)
+            
+            data = sta.GetData(start = self.otime + start * 60, end = self.otime + end * 60, minf = minf, maxf = maxf)
+            if data == None:
+                continue
+
+            picks = sta.GetPicks(start = self.otime + start * 60, end = self.otime + end * 60, index = self.index)
+            
+            delta = list(data.values())[0].stats.delta
+            pickspt = {}
+            for k, v in picks.items():
+                pickspt[k] = (v - self.otime - start*60)/delta
+                pickspt[k] = [int(x) for x in pickspt[k]]
+
+            arrivals = model.get_travel_times(source_depth_in_km=self.depth, distance_in_degree=dist[1], phase_list=['P', 'p', 'S', 's'])
+            p = 0
+            s = 0
+            theoy.append(y)
+            for t in arrivals:
+                if (t.phase.name.lower() == 'p') and (p == 0):
+                    theop.append((t.time - start*60)/delta)
+                    p = 1
+                elif (t.phase.name.lower() == 's') and (s == 0):
+                    theos.append((t.time - start*60)/delta)
+                    s = 1
+
+            edata['picks'] = pickspt
+            edata['pos'] = [y, amplifier]
+
+            if data != None:
+                edata['delta'] = delta
+                for k, v in data.items():
+                    d = v.data
+                    data[k] = d/(max(d)+1e-6) * amplifier + y
+                edata['data'] = data
+                eventData[sta.station] = edata
+
+        fig_name = os.path.join(figdir, f'{self.otime.__unicode__()}_{self.latitude}_{self.longitude}_{self.depth}')
+        PlotEvent(eventData, fig_name, start, end, [theoy], [theop], [theos], 12)
+
+
+
     def Plot(self, stacls: dict, minf: float, maxf: float, amplifier: float, start: float, end: float, order: bool = False):
         model = TauPyModel(model="PREM")
         eventData = {}
@@ -54,7 +121,7 @@ class Event:
             dist = distd[st]
             edata = {}
             if order:
-                y = num
+                y = num + 1
             else:
                 y = dist[0]
             # dist = self.CalDist(sta.latitude, sta.longitude)
@@ -96,6 +163,7 @@ class Event:
 
         fig_name = os.path.join(figdir, f'{self.otime.__unicode__()}_{self.latitude}_{self.longitude}_{self.depth}')
         PlotEvent(eventData, fig_name, start, end, [theoy], [theop], [theos], 12)
+        
 
 
 
@@ -109,6 +177,7 @@ class Event:
             os.makedirs(figdir)
 
         distd = {}
+        orderd = {}
         for sta in stacls.values():
             result = _CalDist(sta.latitude, sta.longitude, olat, olon)
             distd[sta.name] = float(result['distancemeters']/1000)
@@ -197,4 +266,4 @@ class Event:
         theos = [list(x) for x in theos]
 
         fig_name = os.path.join(figdir, f'{start.__unicode__()}_{end.__unicode__()}_{olat}_{olon}')
-        PlotEvent(eventData, fig_name, 0, (end-start)/60, theoy, theop, theos, evt, evy)
+        PlotEvent(eventData, fig_name, 0, (end-start)/60, theoy, theop, theos, 20, evt, evy)

@@ -24,5 +24,5 @@ do
     mv $resultd/error.log $path/result/error"$num".log
     mv $path/data"$num"/* $path/data
 done
-rm *sqlite*
-rm statime*
+rm $path/*sqlite*
+rm $path/statime*

@@ -26,7 +26,7 @@ def _CalFscore(det: list, obs: list, start: UTCDateTime, end: UTCDateTime, thres
         else:
             i = 0
             while i < len(obs):
-                if obs[i] >= start and obs[i] <= end:
+                if obs[i] >= start and obs[i] < end:
                     FN.append(t2str(obs[i]))
                 i = i + 1
     else:
@@ -38,7 +38,7 @@ def _CalFscore(det: list, obs: list, start: UTCDateTime, end: UTCDateTime, thres
             FN = []
             FP = []
             
-            while i < len(obs) and j < len(det) and obs[i] <= end:
+            while i < len(obs) and j < len(det) and obs[i] < end:
                 if obs[i] < start:
                     i = i + 1
                     continue
@@ -57,7 +57,7 @@ def _CalFscore(det: list, obs: list, start: UTCDateTime, end: UTCDateTime, thres
                 FP.append(t2str(det[j]))
                 j = j + 1
 
-            while i < len(obs) and obs[i] <= end:
+            while i < len(obs) and obs[i] < end:
                 FN.append(t2str(obs[i]))
                 i = i + 1
     return TP, FN, FP
@@ -96,8 +96,8 @@ class Sta:
                  lon: float) -> None:
         self.station = sta
         self.network = net
-        self.longitude = lon
-        self.latitude = lat
+        self.longitude = float(lon)
+        self.latitude = float(lat)
         self.id = f'{self.network}.{self.station}..BH'
 
 
@@ -109,7 +109,7 @@ class Sta:
                 maxf: float) -> dict:
 
         st = self.client.get_waveforms(
-                self.network, self.station, "*", "*", start - 60, end + 60)
+                "*", self.station, "*", "*", start - 60, end + 60)
 
         if len(st) == 0:
             return None
@@ -137,7 +137,10 @@ class Sta:
                 + (start + 60 * 60).strftime('%Y-%m-%dT%H:00:00.000000Z') \
                 + '.prediction.mseed'
         f = os.path.join(self.workdir, 'result', fname)
-        st = obspy.read(f)
+        try:
+            st = obspy.read(f)
+        except:
+            return None
         start_sample = int((start - UTCDateTime(fname.split('.')[2])) / st[0].stats.delta)
         end_sample = int((end - UTCDateTime(fname.split('.')[2])) / st[0].stats.delta)
         data = {'p': st[0].data[start_sample : end_sample + 1],
@@ -152,19 +155,19 @@ class Sta:
                  end: UTCDateTime,
                  index: int = None):
 
-        manPicks = self.manPicks[self.manPicks['id'] == self.id]
+        manPicks = self.manPicks[self.manPicks['station'] == self.station]
         if len(manPicks) != 0 and isinstance(manPicks['timestamp'].to_numpy()[0], str):
             manPicks['timestamp'] = manPicks['timestamp'].apply(lambda x: UTCDateTime(x))
         manPicks = manPicks[manPicks['timestamp'] >= start]
-        manPicks = manPicks[manPicks['timestamp'] <= end]
+        manPicks = manPicks[manPicks['timestamp'] < end]
 
-        prePicks = self.prePicks[self.prePicks['id'] == self.id]
+        prePicks = self.prePicks[self.prePicks['station'] == self.station]
         if len(prePicks) != 0 and isinstance(prePicks['timestamp'].to_numpy()[0], str):
             prePicks['timestamp'] = prePicks['timestamp'].apply(lambda x: UTCDateTime('T'.join(x.split(' '))))
         prePicks = prePicks[prePicks['timestamp'] >= start]
-        prePicks = prePicks[prePicks['timestamp'] <= end]
+        prePicks = prePicks[prePicks['timestamp'] < end]
         
-        asoPicks = self.asoPicks[self.asoPicks['id'] == self.id]
+        asoPicks = self.asoPicks[self.asoPicks['station'] == self.station]
         if index == None:
             asoPicks = asoPicks[asoPicks['event_index'] != -1]
         else:
@@ -172,14 +175,26 @@ class Sta:
         if len(asoPicks) != 0 and isinstance(asoPicks['timestamp'].to_numpy()[0], str):
             asoPicks['timestamp'] = asoPicks['timestamp'].apply(lambda x: UTCDateTime('T'.join(x.split(' '))))
         asoPicks = asoPicks[asoPicks['timestamp'] >= start]
-        asoPicks = asoPicks[asoPicks['timestamp'] <= end]
+        asoPicks = asoPicks[asoPicks['timestamp'] < end]
+
+        reloPicks = self.reloPicks[self.reloPicks['station'] == self.station]
+        if index == None:
+            reloPicks = reloPicks[reloPicks['event_index'] != -1]
+        else:
+            reloPicks = reloPicks[reloPicks['event_index'] == index]
+        if len(reloPicks) != 0 and isinstance(reloPicks['timestamp'].to_numpy()[0], str):
+            reloPicks['timestamp'] = reloPicks['timestamp'].apply(lambda x: UTCDateTime('T'.join(x.split(' '))))
+        reloPicks = reloPicks[reloPicks['timestamp'] >= start]
+        reloPicks = reloPicks[reloPicks['timestamp'] < end]
 
         picks = {'pp': prePicks[prePicks["type"]=="P"]['timestamp'].to_numpy(),
                  'ps': prePicks[prePicks["type"]=="S"]['timestamp'].to_numpy(),
                  'mp': manPicks[manPicks["type"]=="P"]['timestamp'].to_numpy(),
                  'ms': manPicks[manPicks["type"]=="S"]['timestamp'].to_numpy(),
                  'ap': asoPicks[asoPicks["type"]=="P"]['timestamp'].to_numpy(),
-                 'as': asoPicks[asoPicks["type"]=="S"]['timestamp'].to_numpy()}
+                 'as': asoPicks[asoPicks["type"]=="S"]['timestamp'].to_numpy(),
+                 'rp': reloPicks[reloPicks["type"]=="P"]['timestamp'].to_numpy(),
+                 'rs': reloPicks[reloPicks["type"]=="S"]['timestamp'].to_numpy()}
         return picks
     
 
@@ -187,17 +202,21 @@ class Sta:
     def PlotPick(self, 
                  start: UTCDateTime, 
                  minf: float, 
-                 maxf: float) -> None:
+                 maxf: float,
+                 event_index: float = -1) -> None:
         
         figdir = os.path.join(self.workdir, 'figures', self.station)
         if not os.path.isdir(figdir):
             os.makedirs(figdir)
 
         data = self.GetData(start = start, end = start + 60, minf = minf, maxf = maxf)
+        if data == None:
+            return
         sgrams, vmax = Calfft(data, 40, minf, maxf) 
         picks = self.GetPicks(start, start + 60)
         prob = self.GetProb(start, start + 60)
-
+        if prob == None:
+            return
         delta = list(data.values())[0].stats.delta
         pickspt = {}
         for k, v in picks.items():
@@ -207,8 +226,34 @@ class Sta:
         for k, v in data.items():
             data[k] = v.data
         
-        fig_name = os.path.join(figdir, f'{self.network}.{self.station}:{start.__unicode__()}')
+        fig_name = os.path.join(figdir, f'{event_index}  {self.network}.{self.station}:{start.__unicode__()}')
         PlotTimePNTF(fig_name, data, sgrams, vmax, pickspt, delta, prob, 'PN-TF', [minf, maxf], 60)
+
+    
+
+    def Plot(self, 
+            figdir: str,
+            start: UTCDateTime, 
+            end: UTCDateTime,
+            minf: float, 
+            maxf: float,
+            remove_instrument: bool = False) -> None:
+        
+        if not os.path.isdir(figdir):
+            os.makedirs(figdir)
+
+        data = self.GetData(start = start, end = end, minf = minf, maxf = maxf)
+        if data == None:
+            return
+        sgrams, vmax = Calfft(data, 40, minf, maxf) 
+
+        delta = list(data.values())[0].stats.delta
+
+        for k, v in data.items():
+            data[k] = v.data
+        
+        fig_name = os.path.join(figdir, f'{self.network}.{self.station}:{start.__unicode__()}')
+        PlotTimePNTF(fig_name, data, sgrams, vmax, None, delta, None, 'PN-TF', [minf, maxf], end - start)
 
 
 
@@ -227,7 +272,12 @@ class Sta:
         sTP, sFN, sFP = _CalFscore(picks['as'], picks['ms'], start, end, threshold)
 
         fscore_aso = {'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}, 'manual': {'p': len(picks['mp']), 's': len(picks['ms'])}, 'predict': {'p': len(picks['ap']), 's': len(picks['as'])}}
-        return fscore_pre, fscore_aso
+
+        pTP, pFN, pFP = _CalFscore(picks['rp'], picks['mp'], start, end, threshold)
+        sTP, sFN, sFP = _CalFscore(picks['rs'], picks['ms'], start, end, threshold)
+
+        fscore_relo = {'p': {'TP': pTP, 'FN': pFN, 'FP': pFP}, 's': {'TP': sTP, 'FN': sFN, 'FP': sFP}, 'manual': {'p': len(picks['mp']), 's': len(picks['ms'])}, 'predict': {'p': len(picks['rp']), 's': len(picks['rs'])}}
+        return fscore_pre, fscore_aso, fscore_relo
 
 
 
@@ -235,13 +285,9 @@ class Sta:
     def GenSta(cls, datadir) -> dir:
         stationCls = {}
         
-        data = Path(datadir)
-        net, sta, lat, lon = np.loadtxt(os.path.join(cls.workdir, 'station.txt'), delimiter='|', unpack=True, usecols=(0,1,2,3), dtype=str)
+        net, sta, lat, lon = np.loadtxt('/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', delimiter='|', unpack=True, usecols=(0,1,2,3), dtype=str, skiprows=1)
 
         for i in range(len(sta)):
             stationCls[sta[i]] = cls(sta[i], net[i], lat[i], lon[i]) 
-
-            if len(sorted(data.glob(f'{net[i]}.{sta[i]}*'))) == 0:
-                del stationCls[sta[i]]        
 
         return stationCls
