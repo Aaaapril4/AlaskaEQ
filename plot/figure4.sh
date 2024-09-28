@@ -20,7 +20,9 @@ PS=figure4.ps
 
 slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
 seisf=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/catalog_bootstrap_40_1_associated.csv
-numf=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/catalog_bootstrap_40_1_event_num.csv
+numf_sandpoint=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/sandpoint_200
+numf_chignik=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/chignik_20
+numf_simeonof=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/simeonof_20
 cmtf=/mnt/home/jieyaqi/code/AlaskaEQ/data/cmt_sandpoint_wdist.csv
 bdlst2=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/pb2002_steps.dat
 coast=100
@@ -36,7 +38,7 @@ J3=x0.004i/-0.01i
 
 # #e02514 normal #4e00f5 thrust #40a362 strike #90643B normalstrike #4752ac thruststrike
 
-gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -Y5.5i > $PS << EOF
+gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -Y8i > $PS << EOF
 -200 0
 600 0
 EOF
@@ -50,23 +52,24 @@ awk -F, '$13=="normal"{print $16, $17, $3, $4, $5, $6, $7, $8, $9, $10, $11, $16
 gmt psmeca -J$J3 -R$R3 -Sc"$size"p -G#e02514  -K -O  >> $PS
 gmt psbasemap -R$R3 -J$J3 -By20f10 -Bx200f50 -BWs -By+l'Dist_slab' -K -O >> $PS
 
-awk -F, '{print $1, $2, 0.004}' $numf | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
-awk -F, '{print $1, $5}' $numf | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+awk -F, '{print $1, $2, 0.004}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $5}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "overriding (dist>=5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx200f50 -BWs -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
 
-awk -F, '{print $1, $4, 0.004}' $numf | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
-awk -F, '{print $1, $7}' $numf | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+awk -F, '{print $1, $4, 0.004}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $6}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "slab (|dist|<5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx200f50 -BWs -By+l'# Events per day' -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
 
-awk -F, '{print $1, $3, 0.004}' $numf | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
-awk -F, '{print $1, $6}' $numf | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+awk -F, '{print $1, $3, 0.004}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "intraplate (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx200f50 -BWS -K -O -Bx+l'Time from Sand Point' >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
+
 
 R1=-5/30/0/80 # histogram
 R2=-5/30/0/800 # line
@@ -91,23 +94,79 @@ gmt psmeca -J$J3 -R$R3 -Sc"$size"p -G#e02514 -K -O  >> $PS
 gmt psbasemap -R$R3 -J$J3 -By20f10 -Bx200f50 -BWs -K -O >> $PS
 
 
-awk -F, '{print $1, $2, 0.008}' $numf | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
-awk -F, '{print $1, $5}' $numf | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+awk -F, '{print $1, $2, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $5}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "overriding (dist>=5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWs  -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -K -O >> $PS
 
-awk -F, '{print $1, $4, 0.008}' $numf | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
-awk -F, '{print $1, $7}' $numf | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+awk -F, '{print $1, $4, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "slab (|dist|<5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWs -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -By+l'# Accumulated Events' -K -O >> $PS
 
-awk -F, '{print $1, $3, 0.008}' $numf | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
-awk -F, '{print $1, $6}' $numf | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+awk -F, '{print $1, $3, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $6}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "intraplate (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWS -Bx+l'Time from Sand Point' -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -K -O >> $PS
+
+
+# plot accumulated number of events
+size=7
+R1=-20/60/0/80 # histogram
+R2=-20/60/0/2000 # line
+J1=x0.04i/0.01i
+J2=x0.04i/0.0004i
+R3=-20/60/-20/30
+J3=x0.04i/-0.01i
+
+awk -F, '{print $1, $2, 0.008}' $numf_simeonof | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -X-3.8i -Y-1.8i -K -O >> $PS
+awk -F, '{print $1, $5}' $numf_simeonof | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+echo "overriding (dist>=5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWs  -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -K -O >> $PS
+
+awk -F, '{print $1, $4, 0.008}' $numf_simeonof | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_simeonof | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+echo "slab (|dist|<5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWs -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -By+l'# Accumulated Events' -K -O >> $PS
+
+awk -F, '{print $1, $3, 0.008}' $numf_simeonof | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $6}' $numf_simeonof | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+echo "intraplate (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWS -Bx+l'Time from Simeonof' -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -K -O >> $PS
+
+
+size=7
+R1=-20/60/0/20 # histogram
+R2=-20/60/0/800 # line
+J1=x0.04i/0.04i
+J2=x0.04i/0.001i
+R3=-20/60/-20/30
+J3=x0.04i/-0.01i
+
+awk -F, '{print $1, $2, 0.008}' $numf_chignik | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -X3.8i -Y1.8i -K -O >> $PS
+awk -F, '{print $1, $5}' $numf_chignik | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+echo "overriding (dist>=5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWs  -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -K -O >> $PS
+
+awk -F, '{print $1, $4, 0.008}' $numf_chignik | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_chignik | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+echo "slab (|dist|<5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWs -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -By+l'# Accumulated Events' -K -O >> $PS
+
+awk -F, '{print $1, $3, 0.008}' $numf_chignik | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
+awk -F, '{print $1, $6}' $numf_chignik | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
+echo "intraplate (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R1 -J$J1 -By80f20 -Bx5f1 -BWS -Bx+l'Time from Chignik' -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -K -O >> $PS
+
 
 gmt psconvert -A -P -Tf $PS
 rm gmt.*
