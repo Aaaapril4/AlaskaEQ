@@ -122,8 +122,8 @@ def determine_aftershocks(cat: pd.DataFrame, evtime: UTCDateTime, evlon: float, 
     return time
 
 
-def associate(picks_obs:pd.DataFrame, picks_det:pd.DataFrame, start: UTCDateTime, end: UTCDateTime) -> pd.Series:
-    mapper = CalFscore(picks_det, picks_obs, start, end)
+def associate(picks_det:pd.DataFrame, picks_obs:pd.DataFrame, start: UTCDateTime, end: UTCDateTime, ncpu: int = 1) -> pd.Series:
+    mapper = CalFscore(picks_det, picks_obs, start, end, ncpu)
     mapper_reverse = {}
     for k, v in mapper.itmes():
         mapper_reverse[v] = k
@@ -161,7 +161,7 @@ if __name__ == '__main__':
     isc_picks = isc_picks[isc_picks['station'].isin(set(picks['station']))]
     isc_picks = isc_picks[isc_picks['event_index'].isin(isc['event_index'])]
     isc_picks['timestamp'] = isc_picks['timestamp'].apply(lambda x: UTCDateTime(x))
-    isc_picks = isc_picks[(isc_picks['timestamp'] > start) & (isc_picks['timestamp'] <= end)]
+    isc_picks = isc_picks[(isc_picks['timestamp'] >= start) & (isc_picks['timestamp'] <= end)]
     
     # fit the bootstrap result
     cat['longitude_std'] = 0.03
@@ -169,10 +169,10 @@ if __name__ == '__main__':
     cat['depth_std'] = 3
     cat['time_std'] = 0.1
     cat['valid'] = 100
+    cat = calculate_horizontal_std(cat)
 
     cat['num_P'], cat['num_S'] = zip(*cat['event_index'].apply(lambda x: calculate_phase_num(x, picks)))
     # cat = filter_catalog(cat)
-    cat = calculate_horizontal_std(cat)
 
     # Simeonof 2020-07-22T06:12:43.49	55.0056	-158.5615	22.5 7.8
     # Sand-point 2020-10-19T20:54:39.70	54.6127	-159.6792	32.9 7.6
@@ -183,7 +183,7 @@ if __name__ == '__main__':
                                      (cat, UTCDateTime('2020-10-19T20:54:39.70'), -159.6792, 54.6127, 32.9, 7.6, check_sandpoint, 2),
                                      (cat, UTCDateTime('2021-07-29T06:15:47.49'), -157.997, 55.4449, 22.0, 8.2, check_chignik, 1)])
                                                                             
-    cat['isc_id'] = associate(isc_picks, picks, start, end)
+    cat['isc_id'] = associate(picks, isc_picks, start, end, 20)
     temp_cat = cat.merge(cmt, left_on='isc_id', right_on='event_id', how = 'left')
     temp_cat.drop(labels=['longitude','latitude','depth','event_index','eventid','time','timer_2018','timer_2020','timer_simeonof','timer_sandpoint','timer_chignik'], inplace=True)
     cat = temp_cat
@@ -201,13 +201,5 @@ if __name__ == '__main__':
     event_num.to_csv(workdir / 'chignik_20_new', index=False)
     event_num = calculate_accumulated(cat, 'timer_simeonof', 5, -20, 60)
     event_num.to_csv(workdir / 'simeinof_20_new', index=False)
-    # cat = cat[cat['valid']>=60]
-    # cat = cat[cat['depth_std'] < 10]
-    # cat = cat[cat['longitude_std'] < 0.1]
-    # cat = cat[cat['latitude_std'] < 0.1]
-    # cat = cat[cat['time_std'] < 1]
-    # cat['time'] = cat['time'].apply(lambda x: UTCDateTime(x))
-    # cat['time_relative_2018'] = (cat['time'] - UTCDateTime(2018, 1, 1))/60/60/24
-    # cat['time_relative_2020'] = (cat['time'] - UTCDateTime(2020, 1, 1))/60/60/24
 
     cat.to_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/catalog_bootstrap_40_1_associated.csv', index=False)

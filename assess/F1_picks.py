@@ -1,5 +1,6 @@
 import pandas as pd
 from obspy import UTCDateTime
+import multiprocessing as mp
 
 
 def _CalFscore(det: pd.DataFrame, obs: pd.DataFrame, threshold: float):
@@ -45,26 +46,37 @@ def _CalFscore(det: pd.DataFrame, obs: pd.DataFrame, threshold: float):
     return TP, FN, FP
 
 
-def CalFscore(phase_obs: pd.DataFrame, phase_det: pd.DataFrame, start: UTCDateTime, end: UTCDateTime):
+
+def CalFscore_sta(sta: str, phase_det: pd.DataFrame, phase_obs: pd.DataFrame):
+    print(sta)
+    obs = phase_obs[phase_obs['station'] == sta]
+    det = phase_det[phase_det['station'] == sta]
+    obs_p = obs[obs["type"] == "P"]
+    obs_s = obs[obs["type"] == "S"]
+    det_p = det[det["type"] == "P"]
+    det_s = det[det["type"] == "S"]
+    pTP, pFN, pFP = _CalFscore(det_p, obs_p, 3)
+    sTP, sFN, sFP = _CalFscore(det_s, obs_s, 3)
+    TP = pd.concat([pTP, sTP])
+    FN = pd.concat([pFN, sFN])
+    FP = pd.concat([pFP, sFP])
+    return TP, FN, FP
+
+
+
+def CalFscore(phase_det: pd.DataFrame, phase_obs: pd.DataFrame, start: UTCDateTime, end: UTCDateTime, ncpu: int = 1):
     phase_obs = phase_obs[(phase_obs['timestamp'] >= start) & (phase_obs['timestamp'] <= end)]
     phase_det = phase_det[(phase_det['timestamp'] >= start) & (phase_det['timestamp'] <= end)]
 
     TP_all = pd.DataFrame()
     FN_all = pd.DataFrame()
     FP_all = pd.DataFrame()
-    for sta in set(phase_obs['station']):
-        print(sta)
-        obs = phase_obs[phase_obs['station'] == sta]
-        det = phase_det[phase_det['station'] == sta]
-        obs_p = obs[obs["type"] == "P"]
-        obs_s = obs[obs["type"] == "S"]
-        det_p = det[det["type"] == "P"]
-        det_s = det[det["type"] == "S"]
-        pTP, pFN, pFP = _CalFscore(det_p, obs_p, 3)
-        sTP, sFN, sFP = _CalFscore(det_s, obs_s, 3)
-        TP = pd.concat([pTP, sTP])
-        FN = pd.concat([pFN, sFN])
-        FP = pd.concat([pFP, sFP])
+    with mp.Pool(ncpu) as p:
+        result = p.starmap(
+            CalFscore_sta,
+            [[sta, phase_det, phase_obs] for sta in set(phase_obs['station'])]
+        )
+    for TP, FN, FP in result:
         TP_all = pd.concat([TP_all, TP])
         FN_all = pd.concat([FN_all, FN])
         FP_all = pd.concat([FP_all, FP])

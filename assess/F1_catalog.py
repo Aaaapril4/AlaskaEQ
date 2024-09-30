@@ -38,9 +38,9 @@ def map_events(picks_TP: pd.DataFrame,
     return mapper, event_obs_pool, event_det_pool
 
 
-def CalFscore(picks_det: pd.DataFrame, picks_obs: pd.DataFrame, start: UTCDateTime, end: UTCDateTime):
+def CalFscore(picks_det: pd.DataFrame, picks_obs: pd.DataFrame, start: UTCDateTime, end: UTCDateTime, ncpu: int = 1):
     
-    picks_TP, picks_FN, picks_FP = PickFscore(picks_det, picks_obs, start, end)
+    picks_TP, picks_FN, picks_FP = PickFscore(picks_det, picks_obs, start, end, ncpu)
     mapper, event_obs_pool, event_det_pool = map_events(picks_TP, set(picks_obs.event_index), set(picks_det.event_index))
     tp = len(mapper)
     fp = len(event_det_pool)
@@ -97,13 +97,13 @@ if __name__ == '__main__':
 
     manual = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manual_picks_filltered2.csv')
     manual_event = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/events_2month.csv')
-    manual = manual[manual['evid'].isin(manual_event.evid)]
+    manual = manual[manual['event_index'].isin(manual_event.event_index)]
     manual['timestamp'] = manual['timestamp'].apply(lambda x: UTCDateTime(x))
     manual = manual[manual['station'].isin(pntf['station'])]
 
     # the start and end time is determined by the time range of the predicted picks
 
-    CalFscore(pntf, manual)
+    CalFscore(pntf, manual, UTCDateTime('2019-01-01'), UTCDateTime('2019-02-28T23:59:59'), 20)
 
     # manual = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/isc_arrival.csv')
     # manual_event = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/isc_catalog.csv')
