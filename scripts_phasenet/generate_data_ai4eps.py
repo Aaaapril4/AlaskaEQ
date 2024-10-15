@@ -5,6 +5,8 @@ import numpy as np
 from pathlib import Path
 from mpi4py import MPI
 import obspy
+import os
+import time
 from obspy import UTCDateTime, read_inventory
 from obspy.clients.filesystem.tsindex import Client as sql_client
 from obspy.clients.fdsn import Client as fdsn_Client
@@ -12,7 +14,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/data.sqlite")
-fdsn_client = fdsn_Client("IRIS", timeout=600)
 XMLS = Path("/mnt/scratch/jieyaqi/alaska/station")
 
 comm = MPI.COMM_WORLD
@@ -64,10 +65,9 @@ def ProcessData(process_index_this_rank, processList, event, picks, station):
         
         try:
             inv = read_inventory(XMLS/f"{st[0].stats.network}.{st[0].stats.station}.xml")
-        except (ValueError, FileNotFoundError):
-            # logger.info(
-            #             f"Cannot find instrumental response: {net}.{sta} {starttime}->{endtime}")
-            # return
+        except (ValueError, FileNotFoundError, IOError):
+            time.sleep(np.random.randint(10))
+            fdsn_client = fdsn_Client("IRIS", timeout=600)
             inv = fdsn_client.get_stations(
                     network = st[0].stats.network,
                     station = st[0].stats.station,
@@ -175,7 +175,7 @@ def ProcessData(process_index_this_rank, processList, event, picks, station):
             p_phase = picksevsta[picksevsta['type'] == 'P'].sort_values('timestamp').iloc[0]
         else:
             p_phase = None
-        if picksevsta[picksevsta['type'] == 'S'] > 0:
+        if len(picksevsta[picksevsta['type'] == 'S']) > 0:
             s_phase = picksevsta[picksevsta['type'] == 'S'].sort_values('timestamp').iloc[0]
         else:
             s_phase = None
@@ -186,7 +186,7 @@ def ProcessData(process_index_this_rank, processList, event, picks, station):
             logger.info(
                 f"!Station out of region: {event_index} {sta} {starttime}->{endtime}")
             continue
-        dist, backazimuth, azimuth = obspy.geodetics.base.gps2dist_azimuth(stainfo.iloc[0]['latitude'], stainfo.iloc[0]['longitude'], evdf.iloc[0]['latitude'], evdf.iloc[0]['longitude'])
+        dist, backazimuth, azimuth = obspy.geodetics.base.gps2dist_azimuth(evdf.iloc[0]['latitude'], evdf.iloc[0]['longitude'], stainfo.iloc[0]['latitude'], stainfo.iloc[0]['longitude'])
     
         stameta = {
             'network': st[0].stats.network, 
@@ -205,12 +205,12 @@ def ProcessData(process_index_this_rank, processList, event, picks, station):
             'dt_s': st[0].stats.delta, 
             'unit': 'm/s',
             'snr': CalSNR(np.array(stadata), phase_index, 10),
-            'p_phase_index': p_phase['phase_index'] if p_phase != None else -1,
-            's_phase_index': s_phase['phase_index'] if s_phase != None else -1,
-            'p_phase_score': 1.0 if p_phase != None else 0,
-            's_phase_score': 1.0 if s_phase != None else 0,
-            'p_phase_time': str(p_phase['timestamp'])[:-1] if p_phase != None else '',
-            's_phase_time': str(s_phase['timestamp'])[:-1] if s_phase != None else '',
+            'p_phase_index': p_phase['phase_index'] if p_phase is not None else -1,
+            's_phase_index': s_phase['phase_index'] if s_phase is not None else -1,
+            'p_phase_score': 1.0 if p_phase is not None else 0,
+            's_phase_score': 1.0 if s_phase is not None else 0,
+            'p_phase_time': str(p_phase['timestamp'])[:-1] if p_phase is not None else '',
+            's_phase_time': str(s_phase['timestamp'])[:-1] if s_phase is not None else '',
             'p_phase_source': 'manual',
             's_phase_source': 'manual',
             'phase_type': [str(x) for x in pickssta['type']], 
@@ -382,7 +382,7 @@ if __name__ == '__main__':
             catalog = pd.Series(evmeta).to_frame().T
             catalogs = pd.concat([catalogs, catalog], ignore_index=True)
         catalogs = catalogs[['event_id', 'event_time', 'latitude', 'longitude', 'depth_km', 'magnitude', 'magnitude_type', 'source']]
-        catalogs.rename(columns={'event_time':'time'})
+        catalogs = catalogs.rename(columns={'event_time':'time'})
         catalogs.to_csv(outdir / 'catalogs.csv', sep=",", index=False, 
                     date_format='%Y-%m-%dT%H:%M:%S.%f')
         phases.to_csv(outdir / 'phase_picks.csv', sep=",", index=False, 
@@ -390,10 +390,15 @@ if __name__ == '__main__':
         logger.info(f"Saving phases and catalogs")
 
         group_names = list(stead.keys())
-        f = h5py.File(outdir / 'waveform.h5', 'w')
+        (outdir / 'waveform').mkdir(exist_ok=True)
+        os.chdir(outdir)
+        f = h5py.File('waveform.h5', 'w')
         for group_name in group_names:
-            output_file_path = f / 'waveform' / f"{group_name}.h5"
-        
+            output_file_path = f"waveform/{group_name}.h5"
+
             with h5py.File(output_file_path, "w") as output_h5_file:
                 stead.copy(group_name, output_h5_file)
             f[group_name] = h5py.ExternalLink(f'waveform/{group_name}.h5', f'/{group_name}')
+
+        stead.close()
+        f.close()
