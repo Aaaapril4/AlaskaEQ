@@ -19,9 +19,8 @@ range=30
 PS=figure3.ps
 
 slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
-seisf=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/catalog_bootstrap_40_1_associated.csv
-numf=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/catalog_bootstrap_40_1_event_num.csv
-cmtf=/mnt/home/jieyaqi/code/AlaskaEQ/data/cmt_sandpoint.csv
+seisf=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/catalogs_bootstrap_processed.csv
+cmtf=../data/cmt.csv
 bdlst2=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/pb2002_steps.dat
 coast=100
 gmt makecpt -Cjet -T-99999999/99999999 -Iz -Z > cptfile.cpt
@@ -36,6 +35,7 @@ plot_cross_section() {
     end=${12}
     text=${13}
     pfile=${14}
+    show=${15}
     echo $1 $2 $3 $4
     echo $start $end
     gmt project -C$1/$2 -E$3/$4 -G0.025 > lined
@@ -55,8 +55,13 @@ plot_cross_section() {
     mv temp tomolined.dat
     python3 calculate_dist.py tomolined.dat 0 1 $1 $2 $trench> temp
     mv temp tomolined.dat
+    mindist=`head -n1 tomolined.dat | awk '{print $1}'`
     maxdist=`tail -n1 tomolined.dat | awk '{print $1}'`
 
+    if (( $(echo "$mindist < -240" | bc -l) ))
+    then
+        mindist=-240
+    fi
     if (( $(echo "$maxdist > 240" | bc -l) ))
     then
         maxdist=240
@@ -69,11 +74,11 @@ plot_cross_section() {
         R3=0/$maxdist/0/5
         R2_beach=$R2
     else
-        R1=-50/$maxdist/0/1
-        R2=-50/$maxdist/0/$depth
-        R3=-50/$maxdist/0/5
-        x1_beach=`echo -50 + $trench | bc -l`
-        x2_beach=`echo $maxdist + $trench | bc -l`
+        R1=$mindist/50/0/1
+        R2=$mindist/50/0/$depth
+        R3=$mindist/50/0/5
+        x1_beach=`echo $mindist + $trench | bc -l`
+        x2_beach=`echo 50 + $trench | bc -l`
         R2_beach=$x1_beach/$x2_beach/0/$depth
     fi
     J1=x0.015i/0.3i
@@ -81,8 +86,8 @@ plot_cross_section() {
     J3=x0.015i/0.06i
     Y=`echo $depth \* 0.015 | bc -l`
     awk '{print $1, $4*0.001}' tomolined.dat | gmt psxy -R$R1 -J$J1 -W1p -X"$Xoff"i -Y"$Yoff"i -K -O -P >> $PS
-    echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-    echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTR+f10p -Dj0.03i/0i -K -O>> $PS
+    echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+    echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTR+f10p -Dj0.03i/0i -K -O>> $PS
     gmt psbasemap -R$R1 -J$J1 -By1f0.5+l'Topo(km)' -B${w}se -K -O >> $PS
 
     awk '{print $1, $4*-0.001}' tomolined.dat | gmt psxy -R$R2 -J$J2 -W1p,darkgray -Gdarkgray -Y-"$Y"i -K -O >> $PS
@@ -90,10 +95,17 @@ plot_cross_section() {
     #seismicity
     /mnt/home/jieyaqi/anaconda3/envs/seis/bin/python3 staclose.py $seisf $1/$2/$3/$4 $staprojdis 1 2 $trench , > staXY
 
-    # background
-    awk -F, '$15<'$end' && $15>='$start' {print $1, $7, $28, $11}' staXY | gmt psxy -R -J -Sc0.1p -W#444444 -E+w0p+p0.6p,#444444 -K -O >> $PS
-    # awk -F, '$15<'$end' && $15>='$start' {print $1, $7, $15, $28, $11}' staXY | gmt psxy -R -J -Sc1p -E+w0p+p0.1,#444444+cl -K -O >> $PS
+    # background dist depth horizontal_std depth_std
+    awk -F, '$18<'$end' && $18>='$start' {print $1, $7, $11, $12}' staXY | gmt psxy -R -J -Sc0.1p -W#444444 -E+w0p+p0.6p,#444444 -K -O >> $PS
+    # awk -F, '$18<'$end' && $18>='$start' {print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2}' $cmtf | gmt pscoupe -J -R -Aa$1/$2/$3/$4/90/$staprojdis/0/$depth -Sm10p -Q -G#444444 -K -O >> $PS
 
+# -159.69 54.62 28.0 0.07 -0.12 0.05 0.64 2.01 1.78 23 -159.69 54.62
+    if [[ ${15} == 1 ]]
+    then
+        gmt pscoupe -J$J2 -R$R2_beach -Aa$1/$2/$3/$4/90/10000/0/$depth -Sm10p -Q -G#444444 -K -O >> $PS  << EOF
+-159.7 54.48 37.0 0.05 -0.52 0.46 1.87 0.7 2.15 27 -159.7 54.48
+EOF
+    fi
 
     #slab
     gmt grdtrack lined -Gslab_Fan.grd -T0.1 | awk '{print $1, $2, $4}' > slab.grd
@@ -101,7 +113,7 @@ plot_cross_section() {
     mv temp slab.grd
     awk '{print $1,$4}' slab.grd | gmt psxy -R$R2 -J -W1p,darkgray,- -K -O >> $PS
 
-    echo $text | gmt pstext -R$R1 -J$J1 -F+cBL+f10p -Dj0.03i/0.03i -K -O>> $PS
+    echo $text | gmt pstext -R$R1 -J$J1 -F+cBR+f10p -Dj0.03i/0.03i -K -O>> $PS
 
     gmt psbasemap -R$R2 -J$J2 -By50f10 -Bx100f20 -B${w}${s}e -Bx+l'Distance(km)' -By+l'Depth(km)' -P -K -O >> $PS
 
@@ -140,8 +152,13 @@ echo $endlon $endlat 0 >> temp
 mv temp tomolined.dat
 python3 calculate_dist.py tomolined.dat 0 1 $startlon $startlat $trench> temp
 mv temp tomolined.dat
+mindist=`head -n1 tomolined.dat | awk '{print $1}'`
 maxdist=`tail -n1 tomolined.dat | awk '{print $1}'`
 
+if (( $(echo "$mindist < -240" | bc -l) ))
+then
+    mindist=-240
+fi
 if (( $(echo "$maxdist > 240" | bc -l) ))
 then
     maxdist=240
@@ -152,18 +169,22 @@ then
     R1=0/$maxdist/0/1
     R2=0/$maxdist/0/$depth
     R3=0/$maxdist/0/5
+    R2_beach=$R2
 else
-    R1=-50/$maxdist/0/1
-    R2=-50/$maxdist/0/$depth
-    R3=-50/$maxdist/0/5
+    R1=$mindist/50/0/1
+    R2=$mindist/50/0/$depth
+    R3=$mindist/50/0/5
+    x1_beach=`echo $mindist + $trench | bc -l`
+    x2_beach=`echo 50 + $trench | bc -l`
+    R2_beach=$x1_beach/$x2_beach/0/$depth
 fi
 J1=x0.015i/0.3i
 J2=x0.015i/-0.015i
 J3=x0.015i/0.06i
 Y=`echo $depth \* 0.015 | bc -l`
 awk '{print $1, $4*0.001}' tomolined.dat | gmt psxy -R$R1 -J$J1 -W1p -Y13i -K -P > $PS
-echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTR+f10p -Dj0.03i/0i -K -O>> $PS
+echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTR+f10p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By1f0.5+l'Topo(km)' -BWse -K -O >> $PS
 
 awk '{print $1, $4*-0.001}' tomolined.dat | gmt psxy -R$R2 -J$J2 -W1p,darkgray -Gdarkgray -Y-"$Y"i -K -O >> $PS
@@ -172,7 +193,8 @@ awk '{print $1, $4*-0.001}' tomolined.dat | gmt psxy -R$R2 -J$J2 -W1p,darkgray -
 /mnt/home/jieyaqi/anaconda3/envs/seis/bin/python3 staclose.py $seisf $startlon/$startlat/$endlon/$endlat $staprojdis 1 2 $trench , > staXY
 
 # background
-awk -F, '$15<'$end' && $15>='$start' {print $1, $7, $28, $11}' staXY | gmt psxy -R -J -Sc0.1p -W#444444 -E+w0p+p0.6p,#444444 -K -O >> $PS
+awk -F, '$18<'$end' && $18>='$start' {print $1, $7, $11, $12}' staXY | gmt psxy -R -J -Sc0.1p -W#444444 -E+w0p+p0.6p,#444444 -K -O >> $PS
+# awk -F, '$18<'$end' && $18>='$start' {print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2}' $cmtf | gmt pscoupe -J -R -Aa$1/$2/$3/$4/90/$staprojdis/0/$depth -Sm10p -Q -G#444444 -K -O >> $PS
 
 #slab
 gmt grdtrack lined -Gslab_Fan.grd -T0.1 | awk '{print $1, $2, $4}' > slab.grd
@@ -187,11 +209,11 @@ rm lined
 rm slab.grd
 rm staXY
 
-plot_cross_section -159.6656 53.3 -159.6656 56 100 25 1.08 1.5 w s -999999999 0 "A) Seismicity earlier than Jun 2020" B
-plot_cross_section -159.2 54.5646 -160.2 54.5646 100 25 -1.08 -0.4 W s 4428763.49 7742516.21 "" A
-plot_cross_section -159.6656 53.3 -159.6656 56 100 25 1.08 1.5 w s 4428763.49 7742516.21 "B) Seismicity between Simeonof and Sand Point" B
-plot_cross_section -159.2 54.5646 -160.2 54.5646 100 25 -1.08 -0.4 W S 7742516.21 999999999 "" A
-plot_cross_section -159.6656 53.3 -159.6656 56 100 25 1.08 1.5 w S 7742516.21 999999999 "C) Seismicity after Sand Point" B
+plot_cross_section -159.6656 56 -159.6656 53.3 100 25 1.08 1.5 w s -999999999 0 "A) Seismicity earlier than Jun 2020" B 0
+plot_cross_section -160.2 54.5646 -159.2 54.5646 100 25 -1.08 -0.4 W s 51.25883668981482 89.61245613425926 "" A 0
+plot_cross_section -159.6656 56 -159.6656 53.3 100 25 1.08 1.5 w s 51.25883668981482 89.61245613425926 "B) Seismicity between Simeonof and Sand Point" B 0
+plot_cross_section -160.2 54.5646 -159.2 54.5646 100 25 -1.08 -0.4 W S 89.61245613425926 999999999 "" A 1
+plot_cross_section -159.6656 56 -159.6656 53.3 100 25 1.08 1.5 w S 89.61245613425926 999999999 "C) Seismicity after Sand Point" B 1
 
 gmt psconvert -A -P -Tf $PS
 rm gmt.*

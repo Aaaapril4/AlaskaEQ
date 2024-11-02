@@ -21,9 +21,9 @@ stationfile=../data/station.txt
 networkf=/mnt/scratch/jieyaqi/alaska/network.txt
 slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
 rupturedir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/AKruptures
-seisf=../data/isc_catalog.csv
+seisf=/mnt/home/jieyaqi/code/AlaskaEQ/data/events.csv
 seisf2=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/catalog_bootstrap_40_1_associated.csv
-seisf3=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all/catalog_bootstrap_40_1_associated.csv
+seisf3=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/catalogs_bootstrap_processed.csv
 cmtf=../data/cmt.csv
 terrane=../data/Alaska_terrane.dat
 coast=100
@@ -99,7 +99,7 @@ gmt pscoast -R$R -J$J -Glightgray -W0.5p,"#444444" -Swhite -A$coast -Df -X1.1i -
 
 grep NA\/PA $bdlst2 | awk '{print $3,$4}' | gmt psxy -J -R -W2 -O -K >> $PS
 gmt makecpt -Cjet -T0/250/50 -Iz -Z > cptfile.cpt
-awk -F, 'NR>1{print $5, $4, $6}' $seisf | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
+awk -F, 'NR>1{print $3, $4, $5}' $seisf | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
 awk -F, 'NR>1{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2 }' $cmtf| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
 echo -148 50 -154.6 52 | gmt psxy -R$R -J$J -Sr+s -Gwhite -W1p -t30 -K -O >> $PS
@@ -116,6 +116,7 @@ gmt pscoast -R$R -J$J -Glightgray -W0.5p,"#444444" -Swhite -A$coast -Df -X-3.42i
 grep NA\/PA $bdlst2 | awk '{print $3,$4}' | gmt psxy -J -R -W2 -O -K >> $PS
 gmt makecpt -Cjet -T0/250/50 -Iz -Z > cptfile.cpt
 awk -F, 'NR>1 {print $2, $3, $4}' $seisf2 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
+# awk -F, 'NR>1{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2 }' $cmtf| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 awk -F, 'NR>1 && $17 {print $2, $3, $4, $17, $18, $19, $20, $21, $22, $23, $2, $3 }' $seisf2| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
 echo "C) Iteration #1" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
@@ -128,8 +129,9 @@ gmt pscoast -R$R -J$J -Glightgray -W0.5p,"#444444" -Swhite -A$coast -Df -X3.42i 
 
 grep NA\/PA $bdlst2 | awk '{print $3,$4}' | gmt psxy -J -R -W2 -O -K >> $PS
 gmt makecpt -Cjet -T0/250/50 -Iz -Z > cptfile.cpt
-awk -F, 'NR>1{print $5, $4, $6}' $seisf | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
-awk -F, 'NR>1{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2 }' $cmtf| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
+awk -F, 'NR>1 {print $2, $3, $4}' $seisf3 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
+awk -F, 'NR>1 && $19{print $2, $3, $4, $19, $20, $21, $22, $23, $24, $25, $2, $3 }' $seisf3| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
+# awk -F, 'NR>1{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2 }' $cmtf| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
 echo "D) Iteration #2" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -Bwsen -O >> $PS 
