@@ -1,7 +1,16 @@
 import pandas as pd
 from obspy import UTCDateTime
 import multiprocessing as mp
+import swifter
+from string import Template
 
+F1_template = Template("F1 for $type\n \
+    precision: $precision\n \
+    recall: $recall\n \
+    f1: $f1\n \
+    tp: $tp\n \
+    fp: $fp\n \
+    fn: $fn")
 
 def _CalFscore(det: pd.DataFrame, obs: pd.DataFrame, threshold: float):
     det = det.sort_values('timestamp', ignore_index = True)
@@ -25,7 +34,8 @@ def _CalFscore(det: pd.DataFrame, obs: pd.DataFrame, threshold: float):
             while i < len(obs) and j < len(det):
                 if abs(det.iloc[j]['timestamp']-obs.iloc[i]['timestamp']) <= threshold:
                     tempdict = dict(det.iloc[j])
-                    tempdict['evid_obs'] = obs.iloc[i]['event_index']
+                    if 'event_index' in obs.columns:
+                        tempdict['evid_obs'] = obs.iloc[i]['event_index']
                     TP = pd.concat([TP, pd.Series(tempdict).to_frame().T])
                     i = i + 1
                     j = j + 1
@@ -80,14 +90,35 @@ def CalFscore(phase_det: pd.DataFrame, phase_obs: pd.DataFrame, start: UTCDateTi
         TP_all = pd.concat([TP_all, TP])
         FN_all = pd.concat([FN_all, FN])
         FP_all = pd.concat([FP_all, FP])
+    
+    tp_p = len(TP_all[TP_all['type'] == 'P'])
+    tp_s = len(TP_all[TP_all['type'] == 'S'])
+    fn_p = len(FN_all[FN_all['type'] == 'P'])
+    fn_s = len(FN_all[FN_all['type'] == 'S'])
+    fp_p = len(FP_all[FP_all['type'] == 'P'])
+    fp_s = len(FP_all[FP_all['type'] == 'S'])
+    precision_p = tp_p/(tp_p+fp_p)
+    precision_s = tp_s/(tp_s+fp_s)
+    recall_p=tp_p/(tp_p+fn_p)
+    recall_s=tp_s/(tp_s+fn_s)
+    f1_p=2*precision_p*recall_p/(precision_p+recall_p)
+    f1_s=2*precision_s*recall_s/(precision_s+recall_s)
+    print(F1_template.substitute(type='prediction_P', 
+                            precision=precision_p, recall=recall_p, 
+                            f1=f1_p, tp=tp_p, fp=fp_p, fn=fn_p))
+    print(F1_template.substitute(type='prediction_S', 
+                            precision=precision_s, recall=recall_s, 
+                            f1=f1_s, tp=tp_s, fp=fp_s, fn=fn_s))
+
     return TP_all, FN_all, FP_all
+
 
 
 if __name__ == '__main__':
     manual = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manual_picks_filltered2.csv')
-    manual['timestamp'] = manual['timestamp'].apply(lambda x: UTCDateTime(x))
-    pntf = pd.read_csv('/mnt/scratch/jieyaqi/alaska/manual_pick_test/picks_tomodd_Alaska.csv')
+    pntf = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/picks.csv')
     pntf['station'] = pntf['id'].apply(lambda x: x.split('.')[1])
-    pntf['timestamp'] = pntf['timestamp'].apply(lambda x: UTCDateTime(x))
-
-    CalFscore(manual, pntf, manual['timestamp'].min(), manual['timestamp'].max())
+    pntf['timestamp'] = pntf['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
+    manual = manual[manual['station'].isin(set(pntf['station']))]
+    manual['timestamp'] = manual['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
+    CalFscore(pntf, manual, manual['timestamp'].min(), manual['timestamp'].max())
