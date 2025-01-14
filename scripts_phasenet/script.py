@@ -85,13 +85,13 @@ def Process(stacls, lock = None, fscoreall_pre = None, fscoreall_aso = None, fsc
 
 
 if __name__ == '__main__':
-    Sta.workdir = '/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1'
+    Sta.workdir = '/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_noIns'
     Event.workdir = Sta.workdir
     # Sta.client = Client(os.path.join(Sta.workdir, 'timeseries.sqlite'))
     # Sta.client = Client('/mnt/scratch/jieyaqi/alaska/alaska_data.sqlite')
     datadir = os.path.join(Sta.workdir, 'data')
     parameter = {'filter':{'p': 0.5, 's': 0.5},
-                 'ncpu': 20}
+                 'ncpu': 1}
     stationCls = Sta.GenSta(datadir)
 
     # Prepare figure directory
@@ -119,31 +119,52 @@ if __name__ == '__main__':
                         float_format="%.3f",
                         date_format='%Y-%m-%dT%H:%M:%S.%f')   
     else:
-        prePicks = pd.read_csv(os.path.join(Sta.workdir, 'picks.csv'))
-
-    manPicks = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manual_picks_filltered2.csv')
-    asoPicks = pd.read_csv(os.path.join(Sta.workdir, 'picks_gamma.csv'))
-    reloPicks = pd.read_csv(os.path.join(Sta.workdir, 'picks_tomodd.csv'))
+        prePicks = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/pntf_alaska/picks_raw.csv')
     
+    prePicks['station'] = prePicks['sta']
+    prePicks['timestamp'] = prePicks['time']
+    prePicks['type'] = prePicks['phase']
+    manPicks = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manual_picks_filltered2.csv')
+    manPicks['station'] = manPicks['id'].apply(lambda x: x.split('.')[1])
+    asoPicks = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/pntf_alaska/picks_gamma.csv')
+    asoPicks['station'] = asoPicks['id'].apply(lambda x: x.split('.')[1])
+    reloPicks = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/pntf_alaska/picks_tomodd.csv')
+    reloPicks['station'] = reloPicks['id'].apply(lambda x: x.split('.')[1])
+
     Sta.manPicks = manPicks
     Sta.prePicks = prePicks
     # Sta.asoPicks = None
     # Sta.reloPicks = None
     Sta.asoPicks = asoPicks
     Sta.reloPicks = reloPicks
-    Sta.client = Client('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/data.sqlite')
-
+    Sta.client = Client('/mnt/scratch/jieyaqi/alaska/data.sqlite')
+    
+    def plot_eventpicks(event_index):
+        ks13 = reloPicks[reloPicks["id"] == 'XO.KS13..BH']
+        ld41 = reloPicks[reloPicks["id"] == 'XO.LD41..BH']
+        ks13_event = ks13[ks13['event_index'] == event_index]['timestamp'].iloc[0]
+        ld41_event = ld41[ld41['event_index'] == event_index]['timestamp'].iloc[0]
+        stationCls['KS13'].PlotPick(start = UTCDateTime(ks13_event) - 10, minf = 2, maxf = 10, event_index = event_index)
+        stationCls['LD41'].PlotPick(start = UTCDateTime(ld41_event) - 10, minf = 2, maxf = 10, event_index = event_index)
+    
+    plot_eventpicks(482)
+    # ks13 = reloPicks[reloPicks["id"] == 'XO.KS13..BH']
+    # ld41 = reloPicks[reloPicks["id"] == 'XO.LD41..BH']
+    # ks13_482 = ks13[ks13['event_index'] == 482]['timestamp'].iloc[0]
+    # ld41_482 = ld41[ld41['event_index'] == 482]['timestamp'].iloc[0]
+    # stationCls['KS13'].PlotPick(start = UTCDateTime(ks13_482) - 10, minf = 1, maxf = 10, event_index = 482)
+    # stationCls['LD41'].PlotPick(start = UTCDateTime(ld41_482) - 10, minf = 1, maxf = 10, event_index = 482)
     # cat = pd.read_csv(os.path.join(Sta.workdir, 'catalogs_tomodd.csv'))
-    import json
-    with open('/mnt/ufs18/home-175/jieyaqi/code/EQDetection/TP.json', 'r') as f:
-        mapper = json.load(f)
-    for k, v in mapper.items():
-        picks_event = reloPicks[reloPicks['event_index'] == v]
-        for i, row in picks_event.iterrows():
-            stationCls[row['station']].PlotPick(start = UTCDateTime(row['timestamp']) - 10,
-                    minf = 1, 
-                    maxf = 10,
-                    event_index = v)
+    # import json
+    # with open('/mnt/ufs18/home-175/jieyaqi/code/EQDetection/TP.json', 'r') as f:
+    #     mapper = json.load(f)
+    # for k, v in mapper.items():
+    #     picks_event = reloPicks[reloPicks['event_index'] == v]
+    #     for i, row in picks_event.iterrows():
+    #         stationCls[row['station']].PlotPick(start = UTCDateTime(row['timestamp']) - 10,
+    #                 minf = 1, 
+    #                 maxf = 10,
+    #                 event_index = v)
     ################################## Calculate F-score ##################################
     # manager = mp.Manager()
     # lock = manager.Lock()

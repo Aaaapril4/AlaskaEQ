@@ -16,7 +16,10 @@ if __name__ == '__main__':
       sep = " "
       data = np.loadtxt(fname, dtype=str, skiprows=1)
 
-   result = subprocess.run(" ".join(["awk -F, 'NR>1{print $"+str(lon_column+1)+", $"+str(lat_column+1)+"}'", fname, "|", "gmt", "project", "-C"+lon0+"/"+lat0, "-E"+lon1+"/"+lat1, "-Q"]), shell=True, capture_output=True, text=True)
+   if not isinstance(data[0], np.ndarray):
+      data = np.array([data])
+
+   result = subprocess.run(" ".join([f"awk -F{sep}", "'NR>1{print $"+str(lon_column+1)+", $"+str(lat_column+1)+"}'", fname, "|", "gmt", "project", "-C"+lon0+"/"+lat0, "-E"+lon1+"/"+lat1, "-Q"]), shell=True, capture_output=True, text=True)
    result = result.stdout.strip().split('\n')
    for i in range(len(result)):
       _, _, dist, proj_dist, proj_lon, proj_lat = result[i].split('\t')

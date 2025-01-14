@@ -102,6 +102,69 @@ class Sta:
 
 
 
+    def Process(self, st):
+        if len(st) == 0:
+            return
+        st.detrend("linear")
+        st.detrend("demean")
+        st.taper(max_percentage=0.002, type="hann")
+
+        try:
+            st.interpolate(sampling_rate=40)
+        except ValueError:
+            for tr in st:
+                try:
+                    tr.interpolate(sampling_rate=40)
+                except ValueError:
+                    st.remove(tr)
+        st.merge(method=1, fill_value="latest")
+
+        if len(st) == 0:
+            return
+        
+        # mask to 0
+        masks = []
+        st.sort()
+        for i in range(len(st)):
+            if type(st[i].data) == np.ma.MaskedArray:
+                masks.append(st[i].data.mask)
+            else:
+                masks.append(np.zeros(len(st[i].data), dtype=bool))
+
+        for i in range(len(st)):
+            st[i].data[masks[i]] = 0
+
+        if len(st) == 0:
+            return
+        
+        # padding other channels if none
+        channels = []
+        for tr in st:
+            channels.append(tr.stats.channel[2])
+
+        if 'Z' not in channels:
+            trz = st[0].copy()
+            trz.data = np.zeros(len(trz.data))
+            trz.stats.channel = st[0].stats.channel[:2]+'Z'
+            st.append(trz)
+
+        if 'E' not in channels and '1' not in channels:
+            tre = st[0].copy()
+            tre.data = np.zeros(len(tre.data))
+            tre.stats.channel = st[0].stats.channel[:2]+'E'
+            st.append(tre)
+
+        if 'N' not in channels and '2' not in channels:
+            trn = st[0].copy()
+            trn.data = np.zeros(len(trn.data))
+            trn.stats.channel = st[0].stats.channel[:2]+'N'
+            st.append(trn)
+
+        st.sort()
+        return st
+
+
+
     def GetData(self, 
                 start: UTCDateTime, 
                 end: UTCDateTime, 
@@ -110,8 +173,9 @@ class Sta:
 
         st = self.client.get_waveforms(
                 "*", self.station, "*", "*", start - 60, end + 60)
+        st = self.Process(st)
 
-        if len(st) == 0:
+        if st == None or len(st) == 0:
             return None
         
         data = {}

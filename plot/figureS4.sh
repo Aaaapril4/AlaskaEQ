@@ -16,8 +16,9 @@ gmt gmtset MAP_FRAME_PEN 1p
 R=-162/-155/53/57
 J=m0.4i
 range=30
-PS=figure2.ps
+PS=figureS4.ps
 
+profp=/mnt/home/jieyaqi/code/AlaskaEQ/data/Shillington_active
 slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
 seisf=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/catalogs_bootstrap_processed.csv
 rupturedir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/AKruptures
@@ -78,17 +79,17 @@ plot_cross_section() {
         R3=0/$maxdist/0/5
         R2_beach=$R2
     else
-        R1=$mindist/50/0/1
-        R2=$mindist/50/0/$depth
-        R3=$mindist/50/0/5
-        x1_beach=`echo $mindist + $trench | bc -l`
-        x2_beach=`echo 50 + $trench | bc -l`
+        R1=-180/20/0/1
+        R2=-180/20/0/$depth
+        R3=-180/20/0/5
+        x1_beach=`echo -180 + $trench | bc -l`
+        x2_beach=`echo 20 + $trench | bc -l`
         R2_beach=$x1_beach/$x2_beach/0/$depth
     fi
-    J1=x0.015i/0.3i
-    J2=x0.015i/-0.015i
-    J3=x0.015i/0.06i
-    Y=`echo $depth \* 0.015 | bc -l`
+    J1=x0.02i/0.3i
+    J2=x0.02i/-0.02i
+    J3=x0.02i/0.06i
+    Y=`echo $depth \* 0.02 | bc -l`
     awk '{print $1, $4*0.001}' tomolined.dat | gmt psxy -R$R1 -J$J1 -W1p -X"$Xoff"i -Y"$Yoff"i -K -O -P >> $PS
     # plot location of A-A'
     if [[ ${14} == 1 ]]
@@ -127,7 +128,7 @@ plot_cross_section() {
     do
         value=`echo $line | awk '{print $13}'`
         color=`python3 get_color.py $value sandpoint.cpt` 
-        echo $line | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12}'| gmt pscoupe -J$J2 -R$R2_beach -Aa$1/$2/$3/$4/90/10000/0/$depth -Sm10p -Q -G$color -K -O >> $PS 
+        echo $line | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12}'| gmt pscoupe -J$J2 -R$R2_beach -Aa$1/$2/$3/$4/90/10000/0/$depth -Sm11p -Q -G$color -K -O >> $PS 
     done
 
     awk -F, '$22 && $19>=0 && $19<='$range' {print $5, $6, $7, $22, $23, $24, $25, $26, $27, $28, $1, $7, $19}' staXY |\
@@ -135,7 +136,7 @@ plot_cross_section() {
     do
         value=`echo $line | awk '{print $13}'`
         color=`python3 get_color.py $value simeonof.cpt` 
-        echo $line | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12}'| gmt pscoupe -J$J2 -R$R2_beach -Aa$1/$2/$3/$4/90/10000/0/$depth -Sm10p -Q -G$color -K -O >> $PS 
+        echo $line | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12}'| gmt pscoupe -J$J2 -R$R2_beach -Aa$1/$2/$3/$4/90/10000/0/$depth -Sm11p -Q -G$color -K -O >> $PS 
     done
 
     awk -F, '$22 && $21>=0 && $21<='$range' {print $5, $6, $7, $22, $23, $24, $25, $26, $27, $28, $1, $7, $21}' staXY |\
@@ -143,10 +144,10 @@ plot_cross_section() {
     do
         value=`echo $line | awk '{print $13}'`
         color=`python3 get_color.py $value chignik.cpt` 
-        echo $line | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12}'| gmt pscoupe -J$J2 -R$R2_beach -Aa$1/$2/$3/$4/90/10000/0/$depth -Sm10p -Q -G$color -K -O >> $PS 
+        echo $line | awk '{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12}'| gmt pscoupe -J$J2 -R$R2_beach -Aa$1/$2/$3/$4/90/10000/0/$depth -Sm11p -Q -G$color -K -O >> $PS 
     done
     # background
-    awk -F, '$18<0 {print $1, $7, $18}' staXY | gmt psxy -R$R2 -J$J2 -Sc2.5p -G"#444444" -t20 -K -O >> $PS
+    awk -F, '$18<0 {print $1, $7, $18}' staXY | gmt psxy -R$R2 -J$J2 -Sc3p -G"#444444" -t20 -K -O >> $PS
     
     #slab
     gmt grdtrack lined -Gslab_Fan.grd -T0.1 | awk '{print $1, $2, $4}' > slab.grd
@@ -237,55 +238,39 @@ G 0.1i
 B chignik.cpt 0i 3p+h+e -Bx30f5+l"Days after Chignik"
 EOF
 
+awk '{print $5, $4}' $profp/MGL1110_MCS03.shotlog | gmt psxy -R$R -J$J -W1.5p,black -O -K  >> $PS
+awk '{print $5, $4}' $profp/MGL1110_MCS04.shotlog | gmt psxy -R$R -J$J -W1.5p,black -O -K  >> $PS
+awk '{print $5, $4}' $profp/MGL1110_MCS05B.shotlog | gmt psxy -R$R -J$J -W1.5p,black -O -K  >> $PS
+
 gmt psxy -R$R -J$J -W1.5p,black -O -K << EOF >> $PS 
--159.6656   53.3
--159.6656   56
+-155.488710   53.655269
+-158.007885 56.298382
 >
--159.2  54.5646
--160.2  54.5646
+-157.630011  52.915365
+-159.221448  55.646599
 >
--160	   53.25	
--161.3  55.9
->
--159.1  53.40
--160.5  56.05
->
--158.15 53.55
--159.72 56.13
->
--157.2 53.75
--158.95 56.3
->
--156.2 53.9
--158.1 56.5
->
--155.25 54.15
--157.5  56.75
+-159.528878  52.599848
+-160.758048	   55.096458
 EOF
 
-gmt pstext -R$R -J$J -F+f10p,bold -D0.01i/-0.1i -K -O << EOF >> $PS
--159.2  54.5646 A
--159.6656   53.3 B
--160	   53.25 C	
--159.1  53.40 D
--158.15 53.55 E
--157.2 53.75 F
--156.2 53.9 G
--155.25 54.15 H
+gmt pstext -R$R -J$J -F+f10p,bold -D-0.01i/0.1i -K -O << EOF >> $PS
+-158.007885 56.298382 3
+-159.221448  55.646599 4
+-160.758048	   55.096458 5	
 EOF
 
 
 
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -BWseN -K -O >> $PS 
 
-plot_cross_section -160.2 54.5646 -159.2 54.5646 100 25 $range 3.3 1.5 W e s A 0
-plot_cross_section -159.6656 56 -159.6656 53.3 100 25 $range 1.15 1.5 w E s B 1
-plot_cross_section -161.3 55.9 -160 53.25 100 25 $range -4.45 -0.4 W e s C 0
-plot_cross_section -160.5 56.05 -159.1 53.40 100 25 $range 4.45 1.5  w E s D 0
-plot_cross_section -159.72 56.13 -158.15 53.55 100 25 $range -4.45 -0.4 W e s E 0
-plot_cross_section -158.95 56.3 -157.2 53.75 100 25 $range 4.45 1.5 w E s F 0
-plot_cross_section -158.1 56.5 -156.2 53.9 100 25 $range -4.45 -0.4 W e S G 0
-plot_cross_section -157.5 56.75 -155.25 54.15 100 25 $range 4.45 1.5 w E S H 0
+plot_cross_section -158.007885 56.298382 -155.488710   53.655269 100 25 $range 3.3 1.5 W E s 3 0
+plot_cross_section -159.221448  55.646599 -157.630011  52.915365 100 25 $range 0 -0.4 W E s 4 1
+plot_cross_section -160.758048	   55.096458 -159.528878  52.599848 100 25 $range 0 -0.4 W E S 5 0
+# plot_cross_section -160.5 56.05 -159.1 53.40 100 25 $range 4.45 1.5  w E s D 0
+# plot_cross_section -159.72 56.13 -158.15 53.55 100 25 $range -4.45 -0.4 W e s E 0
+# plot_cross_section -158.95 56.3 -157.2 53.75 100 25 $range 4.45 1.5 w E s F 0
+# plot_cross_section -158.1 56.5 -156.2 53.9 100 25 $range -4.45 -0.4 W e S G 0
+# plot_cross_section -157.5 56.75 -155.25 54.15 100 25 $range 4.45 1.5 w E S H 0
 
 
 

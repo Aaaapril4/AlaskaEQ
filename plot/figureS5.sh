@@ -2,8 +2,8 @@
 gmt --version
 gmt gmtset MAP_FRAME_TYPE fancy
 gmt gmtset MAP_FRAME_WIDTH 3p
-gmt gmtset FONT_LABEL 10p, Times-Roman
-gmt gmtset FONT_ANNOT_PRIMARY 10p,Times-Roman
+gmt gmtset FONT 10p,Times-Roman
+gmt gmtset FONT_LABEL 10p, Times-Romans
 gmt gmtset PS_MEDIA a3
 gmt gmtset MAP_TITLE_OFFSET 1p
 gmt gmtset MAP_LABEL_OFFSET 1p
@@ -16,7 +16,7 @@ gmt gmtset MAP_FRAME_PEN 1p
 R=-162/-155/53/57
 J=m0.4i
 range=30
-PS=figure4.ps
+PS=figureS5.ps
 
 slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
 numf_sandpoint=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/sandpoint_100
@@ -41,7 +41,7 @@ gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -Y8i > $PS << EOF
 -200 0
 600 0
 EOF
-awk -F, '$15 && NR>1 {print $15, $17, $3, $4, $5, $6, $7, $8, $9, $10, $15, $17}' $cmtf |\
+awk -F, '$15!="" && NR>1 {print $15, $17, $3, $4, $5, $6, $7, $8, $9, $10, $15, $17}' $cmtf |\
 gmt psmeca -J$J3 -R$R3 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
 # awk -F, '$20 && $17 && NR>1 {print $17, $27, $4, $20, $21, $22, $23, $24, $25, $26, $17, $27}' $seisf |\
 # gmt psmeca -J$J3 -R$R3 -Sm"$size"p -G#4e00f5 -K -O >> $PS
@@ -73,7 +73,7 @@ gmt psbasemap -R$R2 -J$J2 -By1500f300 -BE -K -O >> $PS
 awk -F, '{print $1, $3, 0.004}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
 awk -F, '{print $1, $7}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "intraslab (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx100f50 -BWS -K -O -Bx+l'Time from Sand Point' >> $PS
+gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx100f50 -BWS -K -O -Bx+l'Days after Sand Point' >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1500f300 -BE -K -O >> $PS
 
 
@@ -85,11 +85,11 @@ R3=-5/30/-40/40
 J3=X3.2i/-0.5i
 
 # # #e02514 normal #4e00f5 thrust #40a362 strike #90643B normalstrike #4752ac thruststrike
-gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -O -X3.8i -Y2.7i >> $PS << EOF
+gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -O -X4i -Y2.7i >> $PS << EOF
 -5 0
 30 0
 EOF
-awk -F, '$15 && NR>1 {print $15, $17, $3, $4, $5, $6, $7, $8, $9, $10, $15, $17}' $cmtf |\
+awk -F, '$15!="" && NR>1 {print $15, $17, $3, $4, $5, $6, $7, $8, $9, $10, $15, $17}' $cmtf |\
 gmt psmeca -J$J3 -R$R3 -Sm"$size"p -T -Gdarkgray -K -O >> $PS
 # awk -F, '$20 && $17 && NR>1 {print $17, $27, $4, $20, $21, $22, $23, $24, $25, $26, $17, $27}' $seisf |\
 # gmt psmeca -J$J3 -R$R3 -Sm"$size"p -G#4e00f5 -K -O >> $PS
@@ -120,7 +120,7 @@ gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -By+l'# Accumulated Events' -K -O >> $
 awk -F, '{print $1, $3, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
 awk -F, '{print $1, $6}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "intraslab (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWS -Bx+l'Time from Sand Point' -K -O >> $PS
+gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWS -Bx+l'Days after Sand Point' -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
 
 
@@ -133,11 +133,11 @@ J2=X3.2i/0.8i
 R3=-20/60/-40/40
 J3=X3.2i/-0.5i
 
-gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -O -X-3.8i -Y-0.9i >> $PS << EOF
+gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -O -X-4i -Y-1i >> $PS << EOF
 -200 0
 600 0
 EOF
-awk -F, '$14 && NR>1 {print $14, $17, $3, $4, $5, $6, $7, $8, $9, $10, $14, $17}' $cmtf |\
+awk -F, '$14!="" && NR>1 {print $14, $17, $3, $4, $5, $6, $7, $8, $9, $10, $14, $17}' $cmtf |\
 gmt psmeca -J$J3 -R$R3 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
 gmt psbasemap -R$R3 -J$J3 -By40f10 -BWe -By+l'Dist_slab' -K -O >> $PS
 
@@ -156,7 +156,7 @@ gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
 awk -F, '{print $1, $3, 0.008}' $numf_simeonof | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
 awk -F, '{print $1, $6}' $numf_simeonof | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "intraslab (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWS -Bx+l'Time from Simeonof' -K -O >> $PS
+gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWS -Bx+l'Days after Simeonof' -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
 
 
@@ -168,11 +168,11 @@ J2=X3.2i/0.8i
 R3=-20/60/-40/40
 J3=X3.2i/-0.5i
 
-gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -O -X3.8i -Y2.7i >> $PS << EOF
+gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -O -X4i -Y2.7i >> $PS << EOF
 -200 0
 600 0
 EOF
-awk -F, '$16 && NR>1 {print $16, $17, $3, $4, $5, $6, $7, $8, $9, $10, $16, $17}' $cmtf |\
+awk -F, '$16!="" && NR>1 {print $16, $17, $3, $4, $5, $6, $7, $8, $9, $10, $16, $17}' $cmtf |\
 gmt psmeca -J$J3 -R$R3 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
 gmt psbasemap -R$R3 -J$J3 -By40f10 -BEw -By+l'Dist_slab' -K -O >> $PS
 
@@ -191,7 +191,7 @@ gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -By+l'# Accumulated Events' -K -O >> $P
 awk -F, '{print $1, $3, 0.008}' $numf_chignik | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-0.9i -K -O >> $PS
 awk -F, '{print $1, $6}' $numf_chignik | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
 echo "intraslab (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWS -Bx+l'Time from Chignik' -K -O >> $PS
+gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWS -Bx+l'Days after Chignik' -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By400f100 -BE -K -O >> $PS
 
 
