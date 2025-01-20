@@ -20,7 +20,7 @@ PS=figureS4.ps
 
 profp=/mnt/home/jieyaqi/code/AlaskaEQ/data/Shillington_active
 slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
-seisf=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/catalogs_bootstrap_processed.csv
+seisf=/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/catalogs_bootstrap_processed_associated_new.csv
 rupturedir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/AKruptures
 terrane=../data/Alaska_terrane.dat
 cmtf=../data/cmt.csv
