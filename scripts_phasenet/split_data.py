@@ -11,7 +11,7 @@ rank = comm.Get_rank()
 
 basedir = '/mnt/scratch/jieyaqi/alaska/alaska_long'
 root = Path(basedir)
-datad = root / "data"
+datad = root / "data_EH_new"
 nperdir = 130
 
 
@@ -46,7 +46,7 @@ def process_dir_rank(dirnum_this_rank: list, dirmap: dict):
     index directory on different ranks
     '''
     for num in dirnum_this_rank:
-        generate_csv(str(dirmap[num]), '/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', str(root / f'statime{num}.csv'), '2018-01-01T000000', '2022-12-31T235959')
+        generate_csv(str(dirmap[num]), '/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', str(root / f'statime{num}.csv'))
         generate_yaml('scripts_phasenet/alaska_long.yaml', str(Path('/mnt/home/jieyaqi/code/PhaseNet-TF/configs/experiment') / f'alaska_long{num}.yaml'), num)
         per_index(str(dirmap[num]), str(root / f'data{num}.sqlite'))
     return
@@ -54,18 +54,18 @@ def process_dir_rank(dirnum_this_rank: list, dirmap: dict):
 
 if __name__ == "__main__":
     if rank == 0:
-        mseedl = list(datad.glob("*.mseed"))
-        mseedl = [x for x in mseedl if x.name.split('.')[0] != 'SH']
-        ndir = len(mseedl) // nperdir + bool(len(mseedl) % nperdir)
+        # mseedl = list(datad.glob("*.mseed"))
+        # mseedl = [x for x in mseedl if x.name.split('.')[0] != 'SH']
+        # ndir = len(mseedl) // nperdir + bool(len(mseedl) % nperdir)
         dirmap = {}
-
+        ndir = 154
         for i in range(1, ndir + 1):
             datap = root / f'data{i}'
             resultp = root / f'result{i}'
             datap.mkdir(parents=True, exist_ok=True)
             resultp.mkdir(parents=True, exist_ok=True)
             dirmap[i] = datap
-        distribute_mseed_rank(mseedl, ndir, dirmap)
+        # distribute_mseed_rank(mseedl, ndir, dirmap)
     else:
         dirmap = None
         ndir = None

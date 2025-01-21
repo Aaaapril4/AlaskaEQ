@@ -1,38 +1,57 @@
 import warnings
 from pathlib import Path
 
+import csv
 import numpy as np
 import pandas as pd
 from loguru import logger
 from mpi4py import MPI
 from obspy.clients.filesystem.tsindex import Client as sql_client
-# from obspy.clients.fdsn import Client as fdsn_client
-from obspy import UTCDateTime
+from obspy import UTCDateTime #, read_inventory
+# from obspy.clients.fdsn import Client as fdsn_Client
+
+# fdsn_client = fdsn_Client("IRIS", timeout=600)
 
 warnings.filterwarnings("ignore")
 
-comm = MPI.COMM_WORLD  # pylint: disable=c-extension-no-member
+comm = MPI.COMM_WORLD 
 size = comm.Get_size()
 rank = comm.Get_rank()
 station = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', delimiter='|')
-station = station[station['Longitude'] >= -164]
-station['EndTime'] = station['EndTime'].fillna('2025-06-30T00:00:00')
-station['StartTime'] = station['StartTime'].apply(lambda x: UTCDateTime(x)) 
-station['EndTime'] = station['EndTime'].apply(lambda x: UTCDateTime(x)) 
-XMLS = Path("/mnt/scratch/jieyaqi/alaska/station")
+station = station.sort_values('Station')
+start = UTCDateTime("2014-01-01T00:00:00")
+end = UTCDateTime("2015-12-31T23:59:59")
+
 
 OUTPUTS = Path(
-    "/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/data")
-sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/data.sqlite")
-# iris_client = fdsn_client("IRIS")
+    "/mnt/scratch/jieyaqi/alaska/alaska_long/data_EH_new")
+
+XMLS = Path('/mnt/scratch/jieyaqi/alaska/station')
+sq_client = sql_client("/mnt/scratch/jieyaqi/alaska/data_EH14.sqlite")
+csv_file = "EH14.csv"
+
+def save_csv(data):
+    with open(csv_file, mode="w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Index", "Net", "Sta", "StartTime", "EndTime"])  # Header
+        for row in data:
+            writer.writerow([
+                row[0],
+                row[1],
+                row[2],
+                row[3].isoformat(),
+                row[4].isoformat(),
+        ])
+    return
+
 
 def remove_unused_list(process_list_this_rank_raw):
-    # clean this rank
+    # remove traces processed or no data
     filtered = []
     for index, net, sta, starttime, endtime in process_list_this_rank_raw:
         try:
             st = sq_client.get_availability(
-                net, sta, "*", "*", starttime - 60, endtime + 60)
+                net, sta, "*", "EH?", starttime - 60, endtime + 60)
         except:
             filtered.append((index, net, sta, starttime, endtime))
         else:
@@ -54,6 +73,7 @@ def remove_unused_list(process_list_this_rank_raw):
             f.append((index, net, sta, starttime, endtime))
             index += 1
         filtered_all = f
+        save_csv(filtered_all)
 
         filtered_all_splitted = np.array_split(filtered_all, size)
         total = len(filtered_all)
@@ -66,17 +86,10 @@ def remove_unused_list(process_list_this_rank_raw):
     return res_each_rank, total
 
 
-def get_process_list_this_rank(station):
-    # get all array
+def get_process_list_this_rank(station: pd.DataFrame):
+    # get process list for every rank
     process_list = []
-    # {'6J', 'AK', 'AV', 'XO', 'GM', 'AT', 'II', 'TA'}
-    # start = UTCDateTime("2019-12-01T00:00:00")
-    # end = UTCDateTime("2019-12-31T23:59:59")
-    start = UTCDateTime("2019-01-01T00:00:00")
-    end = UTCDateTime("2019-03-01T00:00:00")
-    # station = station[station['StartTime'] < end]
-    # station = station[station['EndTime'] > start]
-    # station = station[station['#Network']=='XO']
+
     index = 0
     staList = station.apply(lambda x: f'{x["Network"]}.{x["Station"]}', axis = 1).to_numpy()
     trunk = 10
@@ -88,8 +101,10 @@ def get_process_list_this_rank(station):
             starttime = start+60*60*24*day*trunk
             endtime = start+60*60*24*(day*trunk+trunk) - 1e-6
             endtime = min(endtime, end)
+
             fname = OUTPUTS / \
                 f"{net}.{sta}.{starttime.year}-{starttime.month}-{starttime.day}.mseed"
+
             if not fname.exists():
                 process_list.append((index, net, sta, starttime, endtime))
                 index += 1
@@ -101,10 +116,17 @@ def get_process_list_this_rank(station):
     return process_list_this_rank, total
 
 
-def process_kernel(index, net, sta, starttime, endtime, total):
+def process_kernel(
+        index: int, 
+        net: str, 
+        sta: str, 
+        starttime: UTCDateTime, 
+        endtime: UTCDateTime, 
+        total: int):
+
     try:
         st = sq_client.get_waveforms_bulk(
-            [(net, sta, "*", "*", starttime - 60, endtime + 60)], None)
+            [(net, sta, "*", "EH?", starttime - 60, endtime + 60)], None)
     except:
         logger.info(
                 f"[{rank}]: {index}/{total} !Error accessing data: {net}.{sta} {starttime}->{endtime}")
@@ -118,6 +140,31 @@ def process_kernel(index, net, sta, starttime, endtime, total):
     st.detrend("demean")
     st.taper(max_percentage=0.002, type="hann")
     
+    ####### remove instrumental response
+    # pre_filt = [0.01, 0.05, 20, 50]
+
+    # try:
+    #     inv = read_inventory(XMLS/f"{st[0].stats.network}.{st[0].stats.station}.xml")
+    #     st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
+    #                 taper=False, inventory=inv)
+    # except (ValueError, FileNotFoundError):
+    #     inv = fdsn_client.get_stations(
+    #             network = st[0].stats.network,
+    #             station = st[0].stats.station,
+    #             channel = "HH?,BH?,EH?,SH?",
+    #             starttime = starttime,
+    #             endtime = endtime,
+    #             level='response'
+    #         )
+    #     try:
+    #         st.remove_response(output="VEL", pre_filt=pre_filt, zero_mean=False,
+    #                     taper=False, inventory=inv)
+    #     except ValueError:
+    #         logger.info(
+    #                     f"!Error finding instrumental response: {st[0].stats.network}.{st[0].stats.station,} {starttime}->{endtime}")
+    #         return
+    ##########
+
     try:
         st.interpolate(sampling_rate=40)
     except ValueError:
@@ -147,7 +194,12 @@ def process_kernel(index, net, sta, starttime, endtime, total):
     
     st.trim(starttime, endtime)
 
-    # padding other channels
+    if len(st) == 0:
+        logger.info(
+                f"[{rank}]: {index}/{total} !Error processing data: {net}.{sta} {starttime}->{endtime}")
+        return
+    
+    # padding other channels if none
     channels = []
     for tr in st:
         channels.append(tr.stats.channel[2])
@@ -185,5 +237,27 @@ def process(process_list_this_rank, total):
 
 
 if __name__ == "__main__":
-    process_list_this_rank, total = get_process_list_this_rank(station)
+    if Path(csv_file).is_file():
+        if rank == 0:
+            data = pd.read_csv(csv_file)
+            f = []
+            index = 0
+            for _, row in data.iterrows():
+                starttime = UTCDateTime(row["StartTime"])
+                fname = OUTPUTS / \
+                    f'{row["Net"]}.{row["Sta"]}.{starttime.year}-{starttime.month}-{starttime.day}.mseed'
+                if not fname.exists():
+                    f.append((index, row["Net"], row["Sta"], UTCDateTime(row["StartTime"]), UTCDateTime(row["EndTime"])))
+                    index +=1 
+            
+            process_list_splitted = np.array_split(f, size)
+            total = len(f)
+        else:
+            process_list_splitted = None
+            total = None
+        
+        process_list_this_rank = comm.scatter(process_list_splitted, root=0)
+        total = comm.bcast(total, root=0)
+    else:
+        process_list_this_rank, total = get_process_list_this_rank(station)
     process(process_list_this_rank, total)

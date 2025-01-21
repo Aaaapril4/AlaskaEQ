@@ -2,12 +2,10 @@ import pandas as pd
 from pathlib import Path
 from obspy import UTCDateTime
 
-def generate_csv(datadir: str, stationf: str, outfile: str, starttime: str, endtime:str):
+def generate_csv(datadir: str, stationf: str, outfile: str):
     data = Path(datadir)
     station = pd.read_csv(stationf, delimiter='|')
     staList = list(station.apply(lambda x: f'{x["Network"]}.{x["Station"]}', axis = 1))
-    starttime = UTCDateTime(starttime)
-    endtime = UTCDateTime(endtime)
     df = pd.DataFrame()
 
     for sta in staList:
@@ -17,12 +15,12 @@ def generate_csv(datadir: str, stationf: str, outfile: str, starttime: str, endt
             continue
         net, st, start, _ = mseedlist[0].name.split('.')
         cur_start = UTCDateTime(start)
-        cur_end = min(cur_start + 10 * 24 * 60 * 60, endtime)
+        cur_end = cur_start + 10 * 24 * 60 * 60
 
         for mseed in mseedlist[1:]:
             net, st, start, _ = mseed.name.split('.')
             start = UTCDateTime(start)
-            end = min(start + 10 * 24 * 60 * 60, endtime)
+            end = start + 10 * 24 * 60 * 60
 
             if start > cur_end + 60 * 60:
                 statime = pd.Series({
@@ -52,4 +50,4 @@ def generate_csv(datadir: str, stationf: str, outfile: str, starttime: str, endt
     
 if __name__ == '__main__':
     for i in range(1, 53):
-        generate_csv(f'/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/data{i}', '/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', f'/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/statime{i}.csv', '2018-01-01T000000', '2022-12-31T235959')
+        generate_csv(f'/mnt/gs21/scratch/jieyaqi/alaska/alaska_long/data{i}', '/mnt/home/jieyaqi/code/AlaskaEQ/data/station.txt', f'/mnt/gs21/scratch/jieyaqi/alaska/alaska_long/statime{i}.csv')
