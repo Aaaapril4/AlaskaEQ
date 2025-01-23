@@ -2,8 +2,8 @@
 gmt --version
 gmt gmtset MAP_FRAME_TYPE fancy
 gmt gmtset MAP_FRAME_WIDTH 3p
-gmt gmtset FONT_LABEL 7p, Times-Roman
-gmt gmtset FONT 7p,Times-Roman
+gmt gmtset FONT_LABEL 7p,Helvetica
+gmt gmtset FONT 7p,Helvetica
 gmt gmtset PS_MEDIA a4
 gmt gmtset MAP_ANNOT_OFFSET 1p
 gmt gmtset MAP_LABEL_OFFSET 1p
@@ -22,9 +22,9 @@ networkf=/mnt/scratch/jieyaqi/alaska/network.txt
 slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
 rupturedir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/AKruptures
 seisf1=../data/events_2month.csv
-seisf2=/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/catalogs_tomodd.csv
-seisf3=/mnt/scratch/jieyaqi/alaska/final/eqt_2month/catalogs_tomodd.csv
-seisf4=/mnt/scratch/jieyaqi/alaska/final/pntf_tonga/catalogs_tomodd.csv
+seisf2=/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/pntf_alaska/catalogs_tomodd.csv
+seisf3=/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/eqt_2month/catalogs_tomodd.csv
+seisf4=/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/pntf_tonga/catalogs_tomodd.csv
 cmtf=../data/cmt.csv
 terrane=../data/Alaska_terrane.dat
 coast=100
@@ -43,7 +43,7 @@ awk -F, 'NR>1 {print $3, $4, $5}' $seisf1 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.c
 echo -148 50 -154.6 51 | gmt psxy -R$R -J$J -Sr+s -Gwhite -W1p -t30 -K -O >> $PS
 gmt psscale -R$R -J$J -D1.99i/0.25i+w1.1i/3p+h+e -Ccptfile.cpt -Ba50f10+l"Depth(km)" -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-echo "A) Reference" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo "a) Reference" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -BWseN -O -K >> $PS 
 
 
@@ -55,7 +55,7 @@ grep NA\/PA $bdlst2 | awk '{print $3,$4}' | gmt psxy -J -R -W2 -O -K >> $PS
 gmt makecpt -Cjet -T0/250/50 -Iz -Z > cptfile.cpt
 awk -F, 'NR>1 {print $2, $3, $4}' $seisf2 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-echo "B) PhaseNet-TF Alaska" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo "b) PhaseNet-TF Alaska" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -BwseN -O -K >> $PS 
 
 
@@ -67,7 +67,7 @@ grep NA\/PA $bdlst2 | awk '{print $3,$4}' | gmt psxy -J -R -W2 -O -K >> $PS
 gmt makecpt -Cjet -T0/250/50 -Iz -Z > cptfile.cpt
 awk -F, 'NR>1 {print $2, $3, $4}' $seisf3 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-echo "C) EQTransformer" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo "c) EQTransformer" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -BWsen -O -K >> $PS 
 
 
@@ -79,7 +79,7 @@ grep NA\/PA $bdlst2 | awk '{print $3,$4}' | gmt psxy -J -R -W2 -O -K >> $PS
 gmt makecpt -Cjet -T0/250/50 -Iz -Z > cptfile.cpt
 awk -F, 'NR>1{print $2, $3, $4}' $seisf4 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-echo "D) PhaseNet-TF Tonga" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo "d) PhaseNet-TF Tonga" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -Bwsen -O >> $PS 
 
 

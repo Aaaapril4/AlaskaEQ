@@ -2,8 +2,8 @@
 gmt --version
 gmt gmtset MAP_FRAME_TYPE fancy
 gmt gmtset MAP_FRAME_WIDTH 3p
-gmt gmtset FONT 10p,Times-Roman
-gmt gmtset FONT_LABEL 10p, Times-Roman
+gmt gmtset FONT 10p,Helvetica
+gmt gmtset FONT_LABEL 10p,Helvetica
 gmt gmtset PS_MEDIA a3
 gmt gmtset MAP_TITLE_OFFSET 1p
 gmt gmtset MAP_LABEL_OFFSET 1p
@@ -88,8 +88,8 @@ plot_cross_section() {
     J3=x0.015i/0.06i
     Y=`echo $depth \* 0.015 | bc -l`
     awk '{print $1, $4*0.001}' tomolined.dat | gmt psxy -R$R1 -J$J1 -W1p -X"$Xoff"i -Y"$Yoff"i -K -O -P >> $PS
-    echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-    echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTR+f10p -Dj0.03i/0i -K -O>> $PS
+    echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+    echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTR+f13p -Dj0.03i/0i -K -O>> $PS
 
     # plot location of A-A'
     if [[ ${16} == 1 ]]
@@ -132,9 +132,9 @@ plot_cross_section() {
     gmt grdtrack lined -Gslab_Fan.grd -T0.1 | awk '{print $1, $2, $4}' > slab.grd
     python3 calculate_dist.py slab.grd 0 1 $1 $2 $trench > temp
     mv temp slab.grd
-    awk '{print $1,$4}' slab.grd | gmt psxy -R$R2 -J -W1p,darkgray,- -K -O >> $PS
+    awk '{print $1,$4}' slab.grd | gmt psxy -R$R2 -J -W1.5p,#999999 -K -O >> $PS
 
-    echo $text | gmt pstext -R$R1 -J$J1 -F+cBR+f10p -Dj0.03i/0.03i -K -O>> $PS
+    echo $text | gmt pstext -R$R1 -J$J1 -F+cBR+f13p -Dj0.03i/0.03i -K -O>> $PS
 
     gmt psbasemap -R$R2 -J$J2 -By50f10 -Bx100f20 -B${w}${s}e -Bx+l'Distance(km)' -By+l'Depth(km)' -P -K -O >> $PS
 
@@ -204,8 +204,8 @@ J2=x0.015i/-0.015i
 J3=x0.015i/0.06i
 Y=`echo $depth \* 0.015 | bc -l`
 awk '{print $1, $4*0.001}' tomolined.dat | gmt psxy -R$R1 -J$J1 -W1p -Y13i -K -P > $PS
-echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTR+f10p -Dj0.03i/0i -K -O>> $PS
+echo $pfile\' | gmt pstext -R$R1 -J$J1 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+echo $pfile | gmt pstext -R$R1 -J$J1 -F+cTR+f13p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By1f0.5+l'Topo(km)' -BWse -K -O >> $PS
 
 awk '{print $1, $4*-0.001}' tomolined.dat | gmt psxy -R$R2 -J$J2 -W1p,darkgray -Gdarkgray -Y-"$Y"i -K -O >> $PS
@@ -224,7 +224,7 @@ awk -F, '$19 && $17<0 {print $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $1, $6}
 gmt grdtrack lined -Gslab_Fan.grd -T0.1 | awk '{print $1, $2, $4}' > slab.grd
 python3 calculate_dist.py slab.grd 0 1 $startlon $startlat $trench > temp
 mv temp slab.grd
-awk '{print $1,$4}' slab.grd | gmt psxy -R$R2 -J -W1p,darkgray,- -K -O >> $PS
+awk '{print $1,$4}' slab.grd | gmt psxy -R$R2 -J -W1.5p,#999999 -K -O >> $PS
 
 gmt psbasemap -R$R2 -J$J2 -By50f10 -Bx100f20 -BWse -Bx+l'Distance(km)' -By+l'Depth(km)' -P -K -O >> $PS
 
@@ -258,25 +258,25 @@ gmt psxy -R$R3 -J$J3 -W1p,lightgray,- -K -O -X4.8i -Y3.6i >> $PS << EOF
 EOF
 awk -F, '$15!="" && NR>1 {print $15, $17, $3, $4, $5, $6, $7, $8, $9, $10, $15, $17}' $cmtf |\
 gmt psmeca -J$J3 -R$R3 -Sm"$size"p -T -Gdarkgray -K -O >> $PS
-
+echo "d)" | gmt pstext -R$R3 -J$J3 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R3 -J$J3 -By40f10 -BEw -By+l'Dist_slab' -K -O >> $PS
 
 
 awk -F, '{print $1, $2, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1.2i -K -O >> $PS
-awk -F, '{print $1, $5}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
-echo "overriding plate (dist>=5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+awk -F, '{print $1, $5}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#40A362" -K -O >> $PS
+echo "overriding plate (dist>=5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWs  -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
 
 awk -F, '{print $1, $4, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1.2i -K -O >> $PS
-awk -F, '{print $1, $7}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
-echo "plate interface (|dist|<5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+awk -F, '{print $1, $7}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#E02514" -K -O >> $PS
+echo "plate interface (|dist|<5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -By+l'# Events per day' -BWs -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -By+l'# Accumulated Events' -K -O >> $PS
 
 awk -F, '{print $1, $3, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1.2i -K -O >> $PS
 awk -F, '{print $1, $6}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#4E00F5" -K -O >> $PS
-echo "intraslab (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
+echo "intraslab (dist<-5km)" | gmt pstext -R$R1 -J$J1 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
 gmt psbasemap -R$R1 -J$J1 -By200f40 -Bx5f1 -BWS -Bx+l'Days after Sand Point' -K -O >> $PS
 gmt psbasemap -R$R2 -J$J2 -By1000f200 -BE -K -O >> $PS
 

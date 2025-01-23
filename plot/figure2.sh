@@ -2,8 +2,8 @@
 gmt --version
 gmt gmtset MAP_FRAME_TYPE fancy
 gmt gmtset MAP_FRAME_WIDTH 3p
-gmt gmtset FONT 10p,Times-Roman
-gmt gmtset FONT_LABEL 10p, Times-Roman
+gmt gmtset FONT 10p,Helvetica
+gmt gmtset FONT_LABEL 10p,Helvetica
 gmt gmtset PS_MEDIA a3
 gmt gmtset MAP_TITLE_OFFSET 1p
 gmt gmtset MAP_LABEL_OFFSET 1p
@@ -100,8 +100,8 @@ plot_cross_section() {
     gmt psbasemap -R$R1 -J$J1 -By1f0.5+l'Topo(km)' -B${w}s -K -O >> $PS
     awk '{print $1, $4}' simeonof_slip | gmt psxy -R$R3 -J$J3 -W1p,"#E02514" -K -O >> $PS
     awk '{print $1, $4}' chignik_slip | gmt psxy -R$R3 -J$J3 -W1p,"#40A362" -K -O >> $PS
-    echo $text\' | gmt pstext -R$R1 -J$J1 -F+cTL+f10p -Dj0.03i/0i -K -O>> $PS
-    echo $text | gmt pstext -R$R1 -J$J1 -F+cTR+f10p -Dj0.03i/0i -K -O>> $PS
+    echo $text\' | gmt pstext -R$R1 -J$J1 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+    echo $text | gmt pstext -R$R1 -J$J1 -F+cTR+f13p -Dj0.03i/0i -K -O>> $PS
     gmt psbasemap -R$R3 -J$J3 -By5f1+l'Slip(m)' -Bs$e -K -O >> $PS
 
     awk '{print $1, $4*-0.001}' tomolined.dat | gmt psxy -R$R2 -J$J2 -W1p,darkgray -Gdarkgray -Y-"$Y"i -K -O >> $PS
@@ -152,7 +152,7 @@ plot_cross_section() {
     gmt grdtrack lined -Gslab_Fan.grd -T0.1 | awk '{print $1, $2, $4}' > slab.grd
     python3 calculate_dist.py slab.grd 0 1 $1 $2 $trench > temp
     mv temp slab.grd
-    awk '{print $1,$4}' slab.grd | gmt psxy -R$R2 -J -W1p,darkgray,- -K -O >> $PS
+    awk '{print $1,$4}' slab.grd | gmt psxy -R$R2 -J -W1.5p,#999999 -K -O >> $PS
     gmt psbasemap -R$R2 -J$J2 -By50f10 -Bx100f20 -B${w}${s}e -Bx+l'Distance(km)' -By+l'Depth(km)' -P -K -O >> $PS
 
     # rm tomolined.dat
@@ -182,12 +182,6 @@ gmt psxy -R -J$J  $rupturedir/1957davies.lin -W1,black,- -: -h4 -O -K  >> $PS
 gmt psxy -R -J$J  $rupturedir/1964davies.lin -W1,black,- -: -h4 -O -K  >> $PS
 gmt psxy -R -J$J  $slipdir/far_eastern_1m.gmtlin -W1,black,- -h4 -O -K  >> $PS
 
-## note all islands
-echo -164.11 54.46 Unimak | gmt pstext -J$J -R$R -F+a35+f8p,Times-Bold -D0/0.5 -K -O >> $PS
-echo -161.70 55.13 Pavlof | gmt pstext -J$J -R$R -F+a35+f8p,Times-Bold -D0/0.9 -K -O >> $PS
-echo -160.05 55.06 Shumagin | gmt pstext -J$J -R$R -F+a40+f8p,Times-Bold -D0/0.3 -K -O >> $PS
-echo -156.70 56.06 Semidi | gmt pstext -J$J -R$R -F+a40+f8p,Times-Bold -D0/0.5 -K -O >> $PS
-echo -153.50 57.4912 Kodiak | gmt pstext -J$J -R$R -F+a45+f8p,Times-Bold -D0/0.8 -K -O >> $PS
 
 # Simeonof
 gmt makecpt -C"#E02514","#FFB347" -T0,$range -Z > simeonof.cpt
@@ -214,7 +208,7 @@ echo -157.32 55.40 30 1.03 -0.77 -0.26 2.39 1.37 -0.48 28 X Y | gmt psmeca -J$J 
 # gmt psscale -Cchignik.cpt -D7.1i/2.3i+w1.7i/3p+h+e -Bx+l'Days after Chiknik' -O -K>> $PS
 
 gmt pslegend -R$R -J$J -DJTR+o0.5i/-0.75i+w1.7i -O -K >> $PS << EOF
-S -0.04i - 0.25i - 1p,darkgray,- 10p slab
+S -0.04i - 0.25i - 1p,#999999 10p slab
 G 0.05i
 S -0.04i - 0.25i - 1p,#40A362 10p slip contour of Chignik
 G 0.1i
@@ -263,7 +257,7 @@ gmt psxy -R$R -J$J -W1.5p,black -O -K << EOF >> $PS
 -157.5  56.75
 EOF
 
-gmt pstext -R$R -J$J -F+f10p,bold -D0.01i/-0.1i -K -O << EOF >> $PS
+gmt pstext -R$R -J$J -F+f13p,bold -D0.01i/-0.1i -K -O << EOF >> $PS
 -159.2  54.5646 A
 -159.6656   53.3 B
 -160	   53.25 C	

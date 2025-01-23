@@ -2,8 +2,8 @@
 gmt --version
 gmt gmtset MAP_FRAME_TYPE fancy
 gmt gmtset MAP_FRAME_WIDTH 3p
-gmt gmtset FONT_LABEL 7p, Times-Roman
-gmt gmtset FONT 7p,Times-Roman
+gmt gmtset FONT_LABEL 7p,Helvetica
+gmt gmtset FONT 7p,Helvetica
 gmt gmtset PS_MEDIA a4
 gmt gmtset MAP_ANNOT_OFFSET 1p
 gmt gmtset MAP_LABEL_OFFSET 1p
@@ -73,19 +73,19 @@ gmt grdcontour $slipdir/chignik_slip.grd -C+1,1.5,2 -J$J -R$R -W1,"#40A362" -O -
 echo -157.32 55.40 30 1.03 -0.77 -0.26 2.39 1.37 -0.48 28 X Y | gmt psmeca -J$J -R$R -Sm5p -G"#40A362" -K -O >> $PS
 echo -159.70 54.48 37 0.05 -0.52 0.46 1.87 0.70 2.15 27 X Y | gmt psmeca -J$J -R$R -Sm5p -G"#4E00F5" -K -O >> $PS
 
-echo -151 58 1964 | gmt pstext -J$J -R$R -F+a60+f8p,Times-Bold -D0/0 -K -O >> $PS
-echo -155 55.5 1938 | gmt pstext -J$J -R$R -F+a30+f8p,Times-Bold -D0/0 -K -O >> $PS
-echo -161.5 55 1948 | gmt pstext -J$J -R$R -F+a0+f8p,Times-Bold -D0/0 -K -O >> $PS
-echo -163 54 1946 | gmt pstext -J$J -R$R -F+a10+f8p,Times-Bold -D0/0 -K -O >> $PS
-echo -164 54.1 1957 | gmt pstext -J$J -R$R -F+a0+f8p,Times-Bold -D0/0 -K -O >> $PS
+echo -151 58 1964 | gmt pstext -J$J -R$R -F+a60+f9p -D0/0 -K -O >> $PS
+echo -155 55.5 1938 | gmt pstext -J$J -R$R -F+a30+f9p -D0/0 -K -O >> $PS
+echo -161.5 55 1948 | gmt pstext -J$J -R$R -F+a0+f9p -D0/0 -K -O >> $PS
+echo -163 54 1946 | gmt pstext -J$J -R$R -F+a10+f9p -D0/0 -K -O >> $PS
+echo -164 54.1 1957 | gmt pstext -J$J -R$R -F+a0+f9p -D0/0 -K -O >> $PS
 
 ## note all islands
-echo -164.11 54.46 Unimak | gmt pstext -J$J -R$R -F+a35+f8p,Times-Bold -D0/0.5 -K -O >> $PS
-echo -161.70 55.13 Pavlof | gmt pstext -J$J -R$R -F+a35+f8p,Times-Bold -D0/0.9 -K -O >> $PS
-echo -160.05 55.06 Shumagin | gmt pstext -J$J -R$R -F+a40+f8p,Times-Bold -D0/0.3 -K -O >> $PS
-echo -156.70 56.06 Semidi | gmt pstext -J$J -R$R -F+a40+f8p,Times-Bold -D0/0.5 -K -O >> $PS
-echo -153.50 57.4912 Kodiak | gmt pstext -J$J -R$R -F+a45+f8p,Times-Bold -D0/0.8 -K -O >> $PS
-echo "a)" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo -164.11 54.46 Unimak | gmt pstext -J$J -R$R -F+a35+f9p -D0/0 -K -O >> $PS
+echo -161.70 55.13 Pavlof | gmt pstext -J$J -R$R -F+a35+f9p -D0/0 -K -O >> $PS
+echo -160.05 55.06 Shumagin | gmt pstext -J$J -R$R -F+a40+f9p -D0/0 -K -O >> $PS
+echo -156.70 56.06 Semidi | gmt pstext -J$J -R$R -F+a40+f9p -D0/0 -K -O >> $PS
+echo -153.50 57.4912 Kodiak | gmt pstext -J$J -R$R -F+a45+f9p -D0/0 -K -O >> $PS
+echo "a)" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 
 echo -148 50 -154.6 51 | gmt psxy -R$R -J$J -Sr+s -Gwhite -W1p -K -O >> $PS
 gmt psscale -R$R -J$J -D1.99i/0.25i+w1.1i/3p+h+e -C123.cpt -Ba4000f1000+l"Elevation(m)" -K -O >> $PS
@@ -110,7 +110,7 @@ gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
 echo -148 50 -154.6 51 | gmt psxy -R$R -J$J -Sr+s -Gwhite -W1p -K -O >> $PS
 # gmt psscale -R$R -J$J -D1.99i/0.55i+w1.1i/3p+h+e -C123.cpt -Ba4000f1000+l"Elevation(m)" -K -O >> $PS
 gmt psscale -R$R -J$J -D1.99i/0.25i+w1.1i/3p+h+e -Ccptfile.cpt -Ba50f10+l"Depth(km)" -K -O >> $PS
-echo "b) Reference" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo "b) Reference" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -BwseN -O -K >> $PS 
 
 
@@ -124,7 +124,7 @@ awk -F, 'NR>1 {print $2, $3, $4}' $seisf2 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.c
 # awk -F, 'NR>1{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2 }' $cmtf| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 awk -F, 'NR>1 && $17 {print $2, $3, $4, $17, $18, $19, $20, $21, $22, $23, $2, $3 }' $seisf2| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-echo "c) Iteration #1" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo "c) Iteration #1" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -BWsen -O -K >> $PS 
 
 
@@ -138,7 +138,7 @@ awk -F, 'NR>1 {print $2, $3, $4}' $seisf3 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.c
 awk -F, 'NR>1 && $19{print $2, $3, $4, $19, $20, $21, $22, $23, $24, $25, $2, $3 }' $seisf3| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 # awk -F, 'NR>1{print $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $1, $2 }' $cmtf| gmt psmeca -J$J -R$R -Sm5p -Zcptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-echo "d) Iteration #2" | gmt pstext -R$R -J$J -F+cBL+f10p -Dj0.05i/0.05i -K -O>> $PS
+echo "d) Iteration #2" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -Bwsen -O >> $PS 
 
 
