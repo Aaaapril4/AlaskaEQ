@@ -14,8 +14,10 @@ F1_template = Template("F1 for $type\n \
     fn: $fn")
 
 def map_events(picks_TP: pd.DataFrame, 
-               event_obs_pool:pd.DataFrame, 
-               event_det_pool:pd.DataFrame):
+               event_obs_pool:set, 
+               event_det_pool:set,
+               event_obs: pd.DataFrame,
+               event_det: pd.DataFrame):
     event_det_pool = event_det_pool.difference([-1])
 
     counter=defaultdict(int)
@@ -35,13 +37,24 @@ def map_events(picks_TP: pd.DataFrame,
             mapper[event_index]=evid_obs
             event_obs_pool.remove(evid_obs) 
             event_det_pool.remove(event_index)
+    
+    # check if origintime diff
+    for evid_det, evid_obs in list(mapper.items()):
+        ori_det = UTCDateTime(event_det[event_det['event_index'] == evid_det].iloc[0]['time'])
+        ori_obs = UTCDateTime(event_obs[event_obs['event_index'] == evid_obs].iloc[0]['time'])
+
+        if ori_det - ori_obs > 15:
+            event_obs_pool.add(evid_obs)
+            event_det_pool.add(evid_det)
+            del mapper[evid_det]
+
     return mapper, event_obs_pool, event_det_pool
 
 
-def CalFscore(picks_det: pd.DataFrame, picks_obs: pd.DataFrame, start: UTCDateTime, end: UTCDateTime, ncpu: int = 1):
+def CalFscore(picks_det: pd.DataFrame, picks_obs: pd.DataFrame, event_det: pd.DataFrame, event_obs: pd.DataFrame, start: UTCDateTime, end: UTCDateTime, ncpu: int = 1):
     
     picks_TP, picks_FN, picks_FP = PickFscore(picks_det, picks_obs, start, end, ncpu)
-    mapper, event_obs_pool, event_det_pool = map_events(picks_TP, set(picks_obs.event_index), set(picks_det.event_index))
+    mapper, event_obs_pool, event_det_pool = map_events(picks_TP, set(picks_obs.event_index), set(picks_det.event_index), event_obs, event_det)
     tp = len(mapper)
     fp = len(event_det_pool)
     fn = len(event_obs_pool)
@@ -91,7 +104,9 @@ def CalFscore(picks_det: pd.DataFrame, picks_obs: pd.DataFrame, start: UTCDateTi
     return mapper
 
 if __name__ == '__main__':
-    # pntf = pd.read_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_tonga/picks_tomodd.csv')
+    # # Assessment of model comparison
+    # pntf = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/eqt_2month/picks_tomodd.csv')
+    # pntf_cat = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/model_comparison/eqt_2month/catalogs_tomodd.csv')
     # pntf['station'] = pntf['id'].apply(lambda x: x.split('.')[1])
     # pntf['timestamp'] = pntf['timestamp'].apply(lambda x: UTCDateTime(x))
 
@@ -101,70 +116,52 @@ if __name__ == '__main__':
     # manual['timestamp'] = manual['timestamp'].apply(lambda x: UTCDateTime(x))
     # manual = manual[manual['station'].isin(pntf['station'])]
 
-    # # the start and end time is determined by the time range of the predicted picks
+    # CalFscore(pntf, manual, pntf_cat, manual_event, UTCDateTime('2019-01-01'), UTCDateTime('2019-02-28T23:59:59'), 20)
 
-    # CalFscore(pntf, manual, UTCDateTime('2019-01-01'), UTCDateTime('2019-02-28T23:59:59'), 20)
+
+    # # Assessment of associator
+    # pntf = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/manual_pick_test/picks_tomodd_constant.csv')
+    # pntf_cat = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/manual_pick_test/catalogs_tomodd_constant.csv')
+    # pntf['station'] = pntf['id'].apply(lambda x: x.split('.')[1])
+    # pntf['timestamp'] = pntf['timestamp'].apply(lambda x: UTCDateTime(x))
 
     # manual = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manual_picks_filltered2.csv')
     # manual_event = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/events.csv')
     # manual = manual[manual['event_index'].isin(manual_event.event_index)]
     # manual['timestamp'] = manual['timestamp'].apply(lambda x: UTCDateTime(x))
-    # start, end = manual['timestamp'].min(), manual['timestamp'].max()
-    # isc = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/isc_arrival_reviewed.csv')
-    # isc_cat = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/isc_catalog_reviewed.csv')
-    # isc_cat = isc_cat[(isc_cat['time'] >= start) & (isc_cat['time'] <= end)]
-    # isc = isc[isc['event_index'].isin(isc['event_index'])]
-    # isc['timestamp'] = isc['timestamp'].apply(lambda x: UTCDateTime(x))
-    # manual = manual[manual['station'].isin(isc['station'])]
-    # # pntf = pd.read_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/picks_tomodd.csv')
-    # # pntf_cat = pd.read_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_all_iter2/catalogs_tomodd.csv')
-    # # pntf = pntf[pntf['event_index'].isin(pntf_cat['event_index'])]
-    # # pntf['station'] = pntf['id'].apply(lambda x: x.split('.')[1])
-    # # manual = manual[manual['station'].isin(pntf['station'])]
-    # # pntf['timestamp'] = pntf['timestamp'].apply(lambda x: UTCDateTime(x))
-    # # the start and end time is determined by the time range of the manual picks
-    # CalFscore(isc, manual, manual['timestamp'].min(), manual['timestamp'].max(), 20)
-
-    # manual = pd.read_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/picks_tomodd.csv')
-    # manual_event = pd.read_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/catalogs_tomodd.csv')
-    # pntf = pd.read_csv('/mnt/scratch/jieyaqi/alaska/final/pntf_alaska_v1/result/phase_arrivals.csv')
-    # pntf = pntf.rename(columns={'time':'timestamp', 'sta':'station', 'phase':'type'})
     # manual = manual[manual['station'].isin(pntf['station'])]
-    # manual['timestamp'] = manual['timestamp'].apply(lambda x: UTCDateTime(x))
-    # pntf['timestamp'] = pntf['timestamp'].apply(lambda x: UTCDateTime(x))
-    # # the start and end time is determined by the time range of the manual picks
-    # picks_TP, picks_FN, picks_FP = PickFscore(manual, pntf, manual['timestamp'].min(), manual['timestamp'].max())
-    # CalFscore(picks_TP, pntf, manual)
+
+    # CalFscore(pntf, manual, pntf_cat, manual_event, manual['timestamp'].min(), manual['timestamp'].max(), 20)
+
 
     manual = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manual_picks_filltered2.csv')
     manual_event = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/events.csv')
     pntf = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/picks_gamma.csv')
     pntf_cat = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/catalogs_gamma.csv')
-    pntf['station'] = pntf['id'].apply(lambda x: x.split('.')[1])
+    pntf['station'] = pntf['id'].swifter.apply(lambda x: x.split('.')[1])
     manual = manual[manual['station'].isin(set(pntf['station']))]
     manual['timestamp'] = manual['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
     start, end = manual['timestamp'].min(), manual['timestamp'].max()
     
-    # pntf_cat['time'] = pntf_cat['time'].swifter.apply(lambda x: UTCDateTime(x))
-    # pntf_cat = pntf_cat[(pntf_cat['time'] >= start) & (pntf_cat['time'] <= end)]
-    # pntf = pntf[pntf['event_index'].isin(pntf_cat['event_index'])]
-    # pntf['timestamp'] = pntf['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
-    # CalFscore(pntf, manual, manual['timestamp'].min(), manual['timestamp'].max(), 20)
-    
-    # pntf = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/picks_bootstrap.csv')
-    # pntf_cat = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/catalogs_bootstrap.csv')
-    # pntf['station'] = pntf['id'].swifter.apply(lambda x: x.split('.')[1])
-    # pntf_cat['time'] = pntf_cat['time'].swifter.apply(lambda x: UTCDateTime(x))
-    # pntf_cat = pntf_cat[(pntf_cat['time'] >= start) & (pntf_cat['time'] <= end)]
-    # pntf = pntf[pntf['event_index'].isin(pntf_cat['event_index'])]
-    # pntf['timestamp'] = pntf['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
-    # CalFscore(pntf, manual, manual['timestamp'].min(), manual['timestamp'].max(), 20)
-
-    pntf = pd.read_csv('/mnt/home/jieyaqi/phase_picks-3.csv')
-    pntf_cat = pd.read_csv('/mnt/home/jieyaqi/PNTFIter1_catalogs.csv')
     pntf_cat['time'] = pntf_cat['time'].swifter.apply(lambda x: UTCDateTime(x))
     pntf_cat = pntf_cat[(pntf_cat['time'] >= start) & (pntf_cat['time'] <= end)]
     pntf = pntf[pntf['event_index'].isin(pntf_cat['event_index'])]
     pntf['timestamp'] = pntf['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
-    CalFscore(pntf, manual, manual['timestamp'].min(), manual['timestamp'].max(), 20)
+    CalFscore(pntf, manual, pntf_cat, manual_event, manual['timestamp'].min(), manual['timestamp'].max(), 20)
+    
+
+    manual = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/manual_picks_filltered2.csv')
+    manual_event = pd.read_csv('/mnt/home/jieyaqi/code/AlaskaEQ/data/events.csv')
+    pntf = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/picks_bootstrap.csv')
+    pntf_cat = pd.read_csv('/mnt/ufs18/nodr/home/jieyaqi/alaska/AlaskaEQ/iter2/catalogs_bootstrap.csv')
+    pntf['station'] = pntf['id'].swifter.apply(lambda x: x.split('.')[1])
+    manual = manual[manual['station'].isin(set(pntf['station']))]
+    manual['timestamp'] = manual['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
+    start, end = manual['timestamp'].min(), manual['timestamp'].max()
+    
+    pntf_cat['time'] = pntf_cat['time'].swifter.apply(lambda x: UTCDateTime(x))
+    pntf_cat = pntf_cat[(pntf_cat['time'] >= start) & (pntf_cat['time'] <= end)]
+    pntf = pntf[pntf['event_index'].isin(pntf_cat['event_index'])]
+    pntf['timestamp'] = pntf['timestamp'].swifter.apply(lambda x: UTCDateTime(x))
+    CalFscore(pntf, manual, pntf_cat, manual_event, manual['timestamp'].min(), manual['timestamp'].max(), 20)
     

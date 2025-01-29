@@ -91,12 +91,16 @@ def CalFscore(phase_det: pd.DataFrame, phase_obs: pd.DataFrame, start: UTCDateTi
         FN_all = pd.concat([FN_all, FN])
         FP_all = pd.concat([FP_all, FP])
     
-    tp_p = len(TP_all[TP_all['type'] == 'P'])
-    tp_s = len(TP_all[TP_all['type'] == 'S'])
-    fn_p = len(FN_all[FN_all['type'] == 'P'])
-    fn_s = len(FN_all[FN_all['type'] == 'S'])
-    fp_p = len(FP_all[FP_all['type'] == 'P'])
-    fp_s = len(FP_all[FP_all['type'] == 'S'])
+    tp_p, tp_s, fn_p, fn_s, fp_p, fp_s = 0, 0, 0, 0, 0, 0
+    if len(TP_all) != 0:
+        tp_p = len(TP_all[TP_all['type'] == 'P'])
+        tp_s = len(TP_all[TP_all['type'] == 'S'])
+    if len(FN_all) != 0:
+        fn_p = len(FN_all[FN_all['type'] == 'P'])
+        fn_s = len(FN_all[FN_all['type'] == 'S'])
+    if len(FP_all) != 0:
+        fp_p = len(FP_all[FP_all['type'] == 'P'])
+        fp_s = len(FP_all[FP_all['type'] == 'S'])
     precision_p = tp_p/(tp_p+fp_p)
     precision_s = tp_s/(tp_s+fp_s)
     recall_p=tp_p/(tp_p+fn_p)
