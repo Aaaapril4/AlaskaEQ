@@ -40,6 +40,7 @@ def map_events(picks_TP: pd.DataFrame,
     
     # check if origintime diff
     for evid_det, evid_obs in list(mapper.items()):
+        
         ori_det = UTCDateTime(event_det[event_det['event_index'] == evid_det].iloc[0]['time'])
         ori_obs = UTCDateTime(event_obs[event_obs['event_index'] == evid_obs].iloc[0]['time'])
 
