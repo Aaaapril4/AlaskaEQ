@@ -41,7 +41,7 @@ plot_cross_section() {
     # echo $start $end
     gmt project -C$1/$2 -E$3/$4 -G0.025 > lined
     trench=`python3 intersect.py lined trench.dat`
-    if [ -z $trench ]
+    if [[ $trench == -1 ]]
     then
         trench=0
     fi
@@ -158,7 +158,7 @@ pfile=A
 
 gmt project -C$startlon/$startlat -E$endlon/$endlat -G0.025 > lined
 trench=`python3 intersect.py lined trench.dat`
-if [ -z $trench ]
+if [[ $trench == -1 ]]
 then
     trench=0
 fi
@@ -248,7 +248,7 @@ R1=-5/30/0/200 # histogram
 R2=-5/30/0/1000 # line
 J1=X3.2i/1i
 J2=X3.2i/1i
-R3=-5/30/-40/40
+R3=-5/30/-20/20
 J3=X3.2i/-0.8i
 
 # # #e02514 normal #4e00f5 thrust #40a362 strike #90643B normalstrike #4752ac thruststrike
@@ -259,7 +259,7 @@ EOF
 awk -F, '$15!="" && NR>1 {print $15, $17, $3, $4, $5, $6, $7, $8, $9, $10, $15, $17}' $cmtf |\
 gmt psmeca -J$J3 -R$R3 -Sm"$size"p -T -Gdarkgray -K -O >> $PS
 echo "d)" | gmt pstext -R$R3 -J$J3 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
-gmt psbasemap -R$R3 -J$J3 -By40f10 -BEw -By+l'Dist_slab' -K -O >> $PS
+gmt psbasemap -R$R3 -J$J3 -By20f5 -BEw -By+l'Dist_slab' -K -O >> $PS
 
 
 awk -F, '{print $1, $2, 0.008}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1.2i -K -O >> $PS

@@ -13,21 +13,29 @@ def line2grid(lon, lat, lon_grid, lat_grid):
     z_grid[nearest_y, nearest_x] = line_value
     return z_grid
 
-line1 = sys.argv[1] # line
-line2 = sys.argv[2] # trench
-# line1 = 'plot/line1'
-# line2 = 'plot/line2'
-# read grid
-lon_1, lat_1, _ = np.loadtxt(line1, unpack=True)
-lon_2, lat_2 = np.loadtxt(line2, unpack=True)
-lon_2 = [x - 180 if x > 0 else x for x in lon_2]
-line1 = LineString([[lon_1[i], lat_1[i]] for i in range(len(lon_1))])
-line2 = LineString([[lon_2[i], lat_2[i]] for i in range(len(lon_2))])
-intersection = line1.intersection(line2)
-if len(list(intersection.coords)) != 0:
-    [(lon, lat)] = list(intersection.coords)
-    d, _, _ = obspy.geodetics.base.gps2dist_azimuth(lat, lon, lat_1[0], lon_1[0])
-    print(d/1000)
+
+def intersect(lon_1, lat_1, lon_2, lat_2):
+    line1 = LineString([[lon_1[i], lat_1[i]] for i in range(len(lon_1))])
+    line2 = LineString([[lon_2[i], lat_2[i]] for i in range(len(lon_2))])
+    intersection = line1.intersection(line2)
+    if len(list(intersection.coords)) != 0:
+        [(lon, lat)] = list(intersection.coords)
+        d, _, _ = obspy.geodetics.base.gps2dist_azimuth(lat, lon, lat_1[0], lon_1[0])
+        return d/1000
+    return -1
+
+if __name__ == '__main__':
+    line1 = sys.argv[1] # line
+    line2 = sys.argv[2] # trench
+    # line1 = 'plot/line1'
+    # line2 = 'plot/line2'
+    # read grid
+    lon_1, lat_1, _ = np.loadtxt(line1, unpack=True)
+    lon_2, lat_2 = np.loadtxt(line2, unpack=True)
+    lon_2 = [x - 180 if x > 0 else x for x in lon_2]
+
+    dist = intersect(lon_1, lat_1, lon_2, lat_2)
+    print(dist)
 
 # ## using grid
 # lon_grid = np.linspace(-166, -148, 10001)
