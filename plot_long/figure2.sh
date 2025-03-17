@@ -17,8 +17,8 @@ Jg=m0.008i
 bdlst2=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/pb2002_steps.dat
 PS=figure2.ps
 
-seisf1=../data/isc_catalog_reviewed.csv
-seisf2=/mnt/scratch/jieyaqi/alaska/alaska_long/catalogs_combined.csv
+seisf1=../data/isc_catalog.csv
+seisf2=/mnt/scratch/jieyaqi/alaska/alaska_long/catalogs_new_10.csv
 cmtf=../data/cmt.csv
 coast=100
 
@@ -47,7 +47,9 @@ gmt pscoast -R$R -J$J -Glightgray -W0.5p,"#444444" -Swhite -A$coast -Df -X3.82i 
 grep NA\/PA $bdlst2 | awk '{print $3,$4}' | gmt psxy -J -R -W2 -O -K >> $PS
 gmt makecpt -Cjet -T0/250/50 -Iz -Z > cptfile.cpt
 awk -F, 'NR>1 {print $2, $3, $4}' $seisf2 | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
+# awk -F, 'NR>1 && $11>=4 && $12>=1 && $13>=1 {print $14, $15, $16/1000}' /mnt/scratch/jieyaqi/alaska/alaska_long/catalogs_gamma.csv | gmt psxy -R$R -J$J -Sc2p -Ccptfile.cpt -K -O >> $PS
 gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
+gmt psxy -R$R -J$J -W1.5p,black -O -K alaska_lines.txt >> $PS 
 echo "b) Catalog in this study" | gmt pstext -R$R -J$J -F+cBL+f13p -Dj0.05i/0.05i -K -O>> $PS
 gmt psbasemap -R$R -J$J -Bx5f1 -By2f1 -BwseN -O -K >> $PS 
 

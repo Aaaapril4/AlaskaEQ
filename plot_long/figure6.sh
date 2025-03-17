@@ -7,202 +7,215 @@ gmt gmtset FONT_LABEL 10p,Helvetica
 gmt gmtset PS_MEDIA a3
 gmt gmtset MAP_TITLE_OFFSET 1p
 gmt gmtset MAP_LABEL_OFFSET 1p
-gmt gmtset MAP_ANNOT_OFFSET 1p
+gmt gmtset MAP_ANNOT_OFFSET 2p
 gmt gmtset MAP_TICK_LENGTH_PRIMARY 2p
 gmt gmtset MAP_TICK_LENGTH_SECONDARY 1p
 gmt gmtset MAP_TICK_PEN_PRIMARY 1p
 gmt gmtset MAP_TICK_PEN_SECONDARY 0.5p
 gmt gmtset MAP_FRAME_PEN 1p
-
-seisf=/mnt/scratch/jieyaqi/alaska/alaska_long/catalogs_new.csv
-terrane=../data/Alaska_terrane.dat
-volcano=../data/volcano.csv
-coast=100
-width=20
 PS=figure6.ps
 
-gmt grdcut @earth_relief_03m.grd -R-166/-148/50/60 -Gtopo.grd
-gmt makecpt -C"#6868FF","#FF6AAD" -T-9600,0 -Z > time.cpt
-
-plot_cross_section() {
-    depth="$7"
-    staprojdis="$8"
-    Xoff=$9
-    Yoff=${10}
-    w=${11}
-    e=${12}
-    s=${13}
-    text=${14}
-    echo $1 $2 $3 $4
-    gmt project -C$1/$2 -E$3/$4 -G0.025 > lined
-    
-    volcano_d=`echo $5 $6 | gmt project -C$1/$2 -E$3/$4 -Q | awk '{print $3}'` 
-    # topography
-    gmt grdtrack lined -Gtopo.grd | awk '{print $1, $2, $4}' > tomolined.dat
-    echo $1 $2 0 > temp
-    awk 'NR==1{print '$1', '$2', $3}' tomolined.dat >> temp
-    cat tomolined.dat >> temp 
-    tail -n1 tomolined.dat | awk '{print '$3', '$4', $3}' >> temp
-    echo $3 $4 0 >> temp
-    mv temp tomolined.dat
-    python3 calculate_dist.py tomolined.dat 0 1 $1 $2 $volcano_d> temp
-    mv temp tomolined.dat
-    mindist=`head -n1 tomolined.dat | awk '{print $1}'`
-    maxdist=`tail -n1 tomolined.dat | awk '{print $1}'`
-
-    R1=-60/60/0/2
-    R2=-60/60/0/$depth
-    J1=x0.03i/0.15i
-    J2=x0.03i/-0.03i
-    Y=`echo $depth \* 0.03 | bc -l`
-    awk '{print $1, $4*0.001}' tomolined.dat | gmt psxy -R$R1 -J$J1 -W1p -X"$Xoff"i -Y"$Yoff"i -K -O >> $PS
-
-    awk -F, '{print $11, $10}' $volcano > temp
-    python3 staclose.py temp $1/$2/$3/$4 $staprojdis 0 1 $volcano_d > staXY
-    awk '{print $1, 0.2}' staXY | gmt psxy -R$R1 -J$J1 -St8p -W0.5p,black -Gred -K -O  >> $PS
-
-    gmt psbasemap -R$R1 -J$J1 -By1f0.5+l'Topo(km)' -Bw${e}s -K -O >> $PS
-    echo $text\' | gmt pstext -R$R1 -J$J1 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
-    echo $text | gmt pstext -R$R1 -J$J1 -F+cTR+f13p -Dj0.03i/0i -K -O>> $PS
-
-    awk '{print $1, $4*-0.001}' tomolined.dat | gmt psxy -R$R2 -J$J2 -W1p,darkgray -Gdarkgray -Y-"$Y"i -K -O >> $PS
-
-    #seismicity
-    /mnt/home/jieyaqi/anaconda3/envs/seis/bin/python3 staclose.py $seisf $1/$2/$3/$4 $staprojdis 1 2 $volcano_d , > staXY
-
-    # background
-    awk -F, 'NR>1{print $1, $7, $14, 1, 1}' staXY | gmt psxy -R$R2 -J$J2 -Sc1p -Ctime.cpt -E+w0p+p0.6+cl -K -O >> $PS
-    gmt psbasemap -R$R2 -J$J2 -By10f2 -Bx50f10 -Bw${s}${e} -Bx+l'Distance(km)' -By+l'Depth(km)' -K -O >> $PS
-
-    rm tomolined.dat
-    rm lined
-    rm staXY
-    rm temp
-}
+slipdir=/mnt/ufs18/nodr/home/jieyaqi/alaska/4YJie/rupturedatafile
+numf_sandpoint=/mnt/ufs18/nodr/home/jieyaqi/alaska/Alaska_long/sandpoint.csv
+numf_chignik=/mnt/ufs18/nodr/home/jieyaqi/alaska/Alaska_long/chignik.csv
+numf_simeonof=/mnt/ufs18/nodr/home/jieyaqi/alaska/Alaska_long/simeonof.csv
+numf_sandpoint2023=/mnt/ufs18/nodr/home/jieyaqi/alaska/Alaska_long/sandpoint2023.csv
+numf_control=/mnt/ufs18/nodr/home/jieyaqi/alaska/Alaska_long/control.csv
+cmtf=/mnt/home/jieyaqi/code/AlaskaEQ/data/cmt_all.csv
+size=7
 
 
-R=-162.894/-160.894/54.417/56.417
-J=m0.5i
+#region Control
+maxh=20
+R1=-8000/0/0/$maxh # histogram
+R2=-8000/0/0/1000
+R3=-8000/0/0/0.6 # line
+J1=X3.2i/0.9i
+J2=X3.2i/0.9i
+J3=X3.2i/0.9i
+R4=-8000/0/-40/40
+J4=X3.2i/-0.5i
 
-## regional and station map
-gmt grdcut @earth_relief_01m.grd -R$R -GAlaska.grd
-gmt grdgradient Alaska.grd -A0 -Nt -Gint.grad
-gmt makecpt -Cgeo -T-8000/5000 -D -Z  > 123.cpt
-gmt grdimage -R$R -J$J Alaska.grd -C123.cpt -Iint.grad -Y8i -K > $PS
-gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
+# XO start -2060 end -1462.0
 
-# plot terrane
-awk -F, '{print $11, $10}' $volcano | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gred -K -O >> $PS
-echo -161.894 55.417 | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gmagenta1 -K -O >> $PS
-echo -161.894 55.417 Pavlof | gmt pstext -J$J -R$R -F+a35+f9p -D0/0 -K -O >> $PS
-
-gmt psxy -R$R -J$J -W1.5p,black -O -K << EOF >> $PS 
--163    55
--161    55.7
->
--161.5  54.5
--162.25 56.3 
+gmt psxy -R$R4 -J$J4 -W1p,lightgray,- -K -Y8i > $PS << EOF
+-8000 0
+100 0
 EOF
+awk -F, '$19 && $18 && NR>1 {print $19, $18, $3, $4, $5, $6, $7, $8, $9, $10, $19, $18}' $cmtf |\
+gmt psmeca -J$J4 -R$R4 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
+echo "c)" | gmt pstext -R$R4 -J$J4 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R4 -J$J4 -By40f10 -BWe -By+l'Slab-Normal Distance (km)' -K -O >> $PS
 
-gmt psbasemap -R$R -J$J -Bx1f1 -By1f1 -BWseN -K -O >> $PS 
-
-plot_cross_section -163 55 -161 55.7 -161.894 55.417 50 $width 1.2 1.5 W e s A
-plot_cross_section -161.5  54.5 -162.25 56.3 -161.894 55.417 50 $width 3.8 1.5 w E s B
-
-
-R=-160.38/-158.38/55.17/57.17
-J=m0.5i
-
-## regional and station map
-gmt grdcut @earth_relief_01m.grd -R$R -GAlaska.grd
-gmt grdgradient Alaska.grd -A0 -Nt -Gint.grad
-gmt makecpt -Cgeo -T-8000/5000 -D -Z  > 123.cpt
-gmt grdimage -R$R -J$J Alaska.grd -C123.cpt -Iint.grad -Y-2.3i -X-5i -K -O >> $PS
-gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-
-# plot terrane
-awk -F, '{print $11, $10}' $volcano | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gred -K -O >> $PS
-echo -159.38 56.17 | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gmagenta1 -K -O >> $PS
-echo -159.38 56.17 Veniaminof | gmt pstext -J$J -R$R -F+a35+f9p -D0/0 -K -O >> $PS
-
-gmt psxy -R$R -J$J -W1.5p,black -O -K << EOF >> $PS 
--160.5  55.75
--158.5  56.5  
->
--159    55.5
--159.9  57
+awk -F, '{print $1, $3, 0.0026}' $numf_control | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_control | gmt psxy -R$R2 -J$J2 -W1p,"#FF6AAD" -K -O >> $PS
+awk -F, '$10{print $1, $10}' $numf_control | gmt psxy -R$R3 -J$J3 -W0.5p,"#6868FF" -K -O >> $PS
+gmt psxy -R$R1 -J$J1 -W0.1p,yellow -Gyellow -t90 -K -O << EOF >> $PS
+-2060 0
+-1462.0 0
+-1462.0 $maxh
+-2060 $maxh
+-2060 0
 EOF
+gmt psbasemap -R$R1 -J$J1 -By5f1 -Bx2000f500 -BWS -By+l'# Events per day' -Bx+l'Days before 2024-01-01' -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By250f50 -BE -K -O >> $PS
 
-gmt psbasemap -R$R -J$J -Bx1f1 -By1f1 -BWseN -K -O >> $PS 
+#endregion
 
-plot_cross_section -160.5  55.75 -158.5  56.5 -159.38 56.17 50 $width 1.2 1.5 W e s A
-plot_cross_section -159    55.5 -159.9  57 -159.38 56.17 50 $width 3.8 1.5 w E s B
+#region Simeonof
+maxh=60
+# plot accumulated number of events
+R1=-8000/500/0/$maxh # histogram
+R2=-8000/500/0/8000 # line
+R3=-8000/500/0/0.5 # line
+J1=X3.2i/0.9i
+J2=X3.2i/0.9i
+J3=X3.2i/0.9i
+R4=-8000/500/-40/40
+J4=X3.2i/-0.5i
 
+# XO start -802.2588366898148 end -204.25883668981479
 
-R=-159.17/-157.17/55.88/57.88
-J=m0.5i
-
-## regional and station map
-gmt grdcut @earth_relief_01m.grd -R$R -GAlaska.grd
-gmt grdgradient Alaska.grd -A0 -Nt -Gint.grad
-gmt makecpt -Cgeo -T-8000/5000 -D -Z  > 123.cpt
-gmt grdimage -R$R -J$J Alaska.grd -C123.cpt -Iint.grad -Y-2.3i -X-5i -K  -O >> $PS
-gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-
-# plot terrane
-awk -F, '{print $11, $10}' $volcano | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gred -K -O >> $PS
-echo -158.17 56.88 | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gmagenta1 -K -O >> $PS
-echo -158.17 56.88 Aniakchak | gmt pstext -J$J -R$R -F+a35+f9p -D0/0 -K -O >> $PS
-
-gmt psxy -R$R -J$J -W1.5p,black -O -K << EOF >> $PS 
--159.2  56.5
--157    57.25
->
--157.4  56
--159    57.9
+gmt psxy -R$R4 -J$J4 -W1p,lightgray,- -K -O -Y-1.5i >> $PS << EOF
+-8000 0
+100 0
 EOF
+awk -F, '$14 && $18 && NR>1 {print $14, $18, $3, $4, $5, $6, $7, $8, $9, $10, $14, $18}' $cmtf |\
+gmt psmeca -J$J4 -R$R4 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
+echo "a)" | gmt pstext -R$R4 -J$J4 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R4 -J$J4 -By40f10 -BWe -By+l'Slab-normal Distance (km)' -K -O >> $PS
 
-gmt psbasemap -R$R -J$J -Bx1f1 -By1f1 -BWseN -K -O >> $PS 
-
-plot_cross_section -159.2  56.5 -157    57.25 -158.17 56.88 50 $width 1.2 1.5 W e s A
-plot_cross_section -157.4  56 -159    57.9 -158.17 56.88 50 $width 3.8 1.5 w E s B
-
-
-R=-156.1/-154.1/57.236/59.236
-J=m0.5i
-
-## regional and station map
-gmt grdcut @earth_relief_01m.grd -R$R -GAlaska.grd
-gmt grdgradient Alaska.grd -A0 -Nt -Gint.grad
-gmt makecpt -Cgeo -T-8000/5000 -D -Z  > 123.cpt
-gmt grdimage -R$R -J$J Alaska.grd -C123.cpt -Iint.grad -Y-2.3i -X-5i -K -O >> $PS
-gmt pscoast -R$R -J$J -W0.5p,"#444444" -A$coast -Df -K -O >> $PS
-
-# plot terrane
-awk -F, '{print $11, $10}' $volcano | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gred -K -O >> $PS
-echo -155.1 58.236 | gmt psxy -R$R -J$J -St12p -W0.5p,black -Gmagenta1 -K -O >> $PS
-echo -155.1 58.236 Trident | gmt pstext -J$J -R$R -F+a35+f9p -D0/0 -K -O >> $PS
-
-gmt psxy -R$R -J$J -W1.5p,black -O -K << EOF >> $PS 
--156    57.95  
--154    58.55
->
--154    57.4
--156    58.85
+awk -F, '{print $1, $3, 0.0026}' $numf_simeonof | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_simeonof | gmt psxy -R$R2 -J$J2 -W1p,"#FF6AAD" -K -O >> $PS
+awk -F, '$10{print $1, $10}' $numf_simeonof | gmt psxy -R$R3 -J$J3 -W0.5p,"#6868FF" -K -O >> $PS
+gmt psxy -R$R1 -J$J1 -W0.1p,yellow -Gyellow -t90 -K -O << EOF >> $PS
+-802.2588366898148 0
+-204.25883668981479 0
+-204.25883668981479 $maxh
+-802.2588366898148 $maxh
+-802.2588366898148 0
 EOF
+gmt psbasemap -R$R1 -J$J1 -By20f5 -Bx2000f500 -BWS -By+l'# Events per day' -Bx+l'Days after 2020 Mw 7.8 Simeonof' -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -Byy2000f200 -BE -K -O >> $PS
+#endregion
 
-gmt psbasemap -R$R -J$J -Bx1f1 -By1f1 -BWSeN -K -O >> $PS 
+#region Sandpoint
+maxh=20
+# plot accumulated number of events
+R1=-8000/500/0/$maxh # histogram
+R2=-8000/500/0/1000
+R3=-8000/500/0/0.6 # line
+J1=X3.2i/0.9i
+J2=X3.2i/0.9i
+J3=X3.2i/0.9i
+R4=-8000/500/-40/40
+J4=X3.2i/-0.5i
 
-plot_cross_section -156    57.95 -154    58.55 -155.1 58.236 50 $width 1.2 1.5 W e S A
-plot_cross_section -154    57.4 -156    58.85 -155.1 58.236 50 $width 3.8 1.5 w E S B
+# XO start -891.871292824074 end -293.8712928240741 simeonof -89.61245613425926
 
-gmt psscale -R$R -J$J -D2i/-0.5i+w3i/3p+h+e -Ctime.cpt -Ba2000f200+l"Time to 2024.1.1" -K -O >> $PS
+gmt psxy -R$R4 -J$J4 -W1p,lightgray,- -K -O -X4i -Y1i >> $PS << EOF
+-8000 0
+100 0
+EOF
+awk -F, '$15 && $18 && NR>1 {print $15, $18, $3, $4, $5, $6, $7, $8, $9, $10, $15, $18}' $cmtf |\
+gmt psmeca -J$J4 -R$R4 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
+echo "b)" | gmt pstext -R$R4 -J$J4 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R4 -J$J4 -By40f10 -BwE -By+l'Slab-Normal Distance (km)' -K -O >> $PS
 
-gmt psconvert -A -Tf $PS
+awk -F, '{print $1, $3, 0.0026}' $numf_sandpoint | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_sandpoint | gmt psxy -R$R2 -J$J2 -W1p,"#FF6AAD" -K -O >> $PS
+awk -F, '$10{print $1, $10}' $numf_sandpoint | gmt psxy -R$R3 -J$J3 -W0.5p,"#6868FF" -K -O >> $PS
+gmt psxy -R$R1 -J$J1 -W0.1p,yellow -Gyellow -t90 -K -O << EOF >> $PS
+-891.871292824074 0
+-293.8712928240741 0
+-293.8712928240741 $maxh
+-891.871292824074 $maxh
+-891.871292824074 0
+EOF
+echo -89.61245613425926 $maxh 0  | gmt psxy -R$R1 -J$J1 -Sb0.001b -W0.8p -Gblack -K -O -t50 >> $PS
+gmt psbasemap -R$R1 -J$J1 -By5f1 -Bx2000f500 -BWS -Bx+l'Days after 2020 Mw 7.6 Sand Point' -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By250f50 -BE -By+l'# Accumulated Events' -K -O >> $PS
+#endregion
+
+#region Chignik
+maxh=50
+R1=-8000/500/0/$maxh # histogram
+R2=-8000/500/0/5000
+R3=-8000/500/0/0.6 # line
+J1=X3.2i/0.9i
+J2=X3.2i/0.9i
+J3=X3.2i/0.9i
+R4=-8000/500/-40/40
+J4=X3.2i/-0.5i
+
+# XO start -1174.2609663194444 end -576.2609663194445 simeonof -372.00212962962956
+
+gmt psxy -R$R4 -J$J4 -W1p,lightgray,- -K -O  -X-4i -Y-1.5i >> $PS << EOF
+-8000 0
+100 0
+EOF
+awk -F, '$16 && $18 && NR>1 {print $16, $18, $3, $4, $5, $6, $7, $8, $9, $10, $16, $18}' $cmtf |\
+gmt psmeca -J$J4 -R$R4 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
+echo "c)" | gmt pstext -R$R4 -J$J4 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R4 -J$J4 -By40f10 -BWe -By+l'Slab-Normal Distance (km)' -K -O >> $PS
+
+awk -F, '{print $1, $3, 0.0026}' $numf_chignik | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_chignik | gmt psxy -R$R2 -J$J2 -W1p,"#FF6AAD" -K -O >> $PS
+awk -F, '$10{print $1, $10}' $numf_chignik | gmt psxy -R$R3 -J$J3 -W0.5p,"#6868FF" -K -O >> $PS
+gmt psxy -R$R1 -J$J1 -W0.1p,yellow -Gyellow -t90 -K -O << EOF >> $PS
+-1174.2609663194444 0
+-576.2609663194445 0
+-576.2609663194445 $maxh
+-1174.2609663194444 $maxh
+-1174.2609663194444 0
+EOF
+echo -372.00212962962956 $maxh 0  | gmt psxy -R$R1 -J$J1 -Sb0.001b -W0.8p -Gblack -K -O -t50  >> $PS
+gmt psbasemap -R$R1 -J$J1 -By10f2 -Bx2000f500 -BWS -By+l'# Events per day' -Bx+l'Days after 2021 Mw 8.2 Chignik' -K -O >> $PS
+gmt psbasemap -R$R2 -J$J2 -By2500f500 -BE -K -O >> $PS
+
+#endregion
+
+#region Sandpoint2023
+maxh=60
+# plot accumulated number of events
+R1=-8000/500/0/$maxh # histogram
+R2=-8000/500/0/10000
+R3=-8000/500/0/0.6 # line
+J1=X3.2i/0.9i
+J2=X3.2i/0.9i
+J3=X3.2i/0.9i
+R4=-8000/500/-40/40
+J4=X3.2i/-0.5i
+
+# XO start -1891.2835782175925 end -1293.2835782175928 simeonof -1089.0247415277777 chignik -717.022611898148
+
+gmt psxy -R$R4 -J$J4 -W1p,lightgray,- -K -O -X4i -Y1i >> $PS << EOF
+-8000 0
+100 0
+EOF
+awk -F, '$17 && $18 && NR>1 {print $17, $18, $3, $4, $5, $6, $7, $8, $9, $10, $17, $18}' $cmtf |\
+gmt psmeca -J$J4 -R$R4 -Sm"$size"p -Gdarkgray -T -K -O >> $PS
+echo "d)" | gmt pstext -R$R4 -J$J4 -F+cTL+f13p -Dj0.03i/0i -K -O>> $PS
+gmt psbasemap -R$R4 -J$J4 -By40f10 -BwE -By+l'Slab-Normal Distance (km)' -K -O >> $PS
+
+awk -F, '{print $1, $3, 0.0026}' $numf_sandpoint2023 | gmt psxy -R$R1 -J$J1 -Sb1ub0 -W0.01p,darkgray -Gdarkgray -Y-1i -K -O >> $PS
+awk -F, '{print $1, $7}' $numf_sandpoint2023 | gmt psxy -R$R2 -J$J2 -W1p,"#FF6AAD" -K -O >> $PS
+awk -F, '$10{print $1, $10}' $numf_sandpoint2023 | gmt psxy -R$R3 -J$J3 -W0.5p,"#6868FF" -K -O >> $PS
+gmt psxy -R$R1 -J$J1 -W0.1p,yellow -Gyellow -t90 -K -O << EOF >> $PS
+-1891.2835782175925 0
+-1293.2835782175928 0
+-1293.2835782175928 $maxh
+-1891.2835782175925 $maxh
+-1891.2835782175925 0
+EOF
+echo -1089.0247415277777 $maxh 0  | gmt psxy -R$R1 -J$J1 -Sb0.001b -W0.8p -Gblack -K -O -t50 >> $PS
+echo -717.022611898148 $maxh 0  | gmt psxy -R$R1 -J$J1 -Sb0.001b -W0.8p -Gblack -K -O -t50 >> $PS
+gmt psbasemap -R$R1 -J$J1 -By20f2 -Bx2000f500 -BWS -K -O -Bx+l'Days after 2023 Mw 7.2 Sand Point' >> $PS
+gmt psbasemap -R$R2 -J$J2 -By2500f500 -BE  -By+l'# Accumulated Events' -K -O >> $PS
+#endregion
+
+
+
+gmt psconvert -A -P -Tf $PS
 rm gmt.*
-rm lined
-rm *grad
-rm staXY
-rm topo.grd
-rm tomolined.dat
 rm $PS

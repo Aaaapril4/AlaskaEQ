@@ -71,9 +71,9 @@ gmt grdcontour $slipdir/simeonof_slip.grd -C+1,1.5,2 -J$J -R$R -W1,"#E02514" -O 
 echo -159.28 54.83 36 4.15 -3.23 -0.92 5.38 2.93 -1.65 27 X Y | gmt psmeca -J$J -R$R -Sm5p -G"#E02514" -K -O >> $PS
 gmt grdcontour $slipdir/chignik_slip.grd -C+1,1.5,2 -J$J -R$R -W1,"#40A362" -O -K >> $PS
 echo -157.32 55.40 30 1.03 -0.77 -0.26 2.39 1.37 -0.48 28 X Y | gmt psmeca -J$J -R$R -Sm5p -G"#40A362" -K -O >> $PS
-# echo -159.70 54.48 37 0.05 -0.52 0.46 1.87 0.70 2.15 27 X Y | gmt psmeca -J$J -R$R -Sm5p -G"#4E00F5" -K -O >> $PS
+echo -159.70 54.48 37 0.05 -0.52 0.46 1.87 0.70 2.15 27 X Y | gmt psmeca -J$J -R$R -Sm5p -G"#4E00F5" -K -O >> $PS
 echo -160.90 54.44 32 4.30 -3.66 -0.64 5.11 2.75 -1.56 26 X Y | gmt psmeca -J$J -R$R -Sm5p -G"#DE7017" -K -O >> $PS
-
+echo -149.12 56.22 34 0.24 -0.48 0.25 0.19 -0.36 0.79 28 X Y | gmt psmeca -J$J -R$R -Sm5p -G"black" -K -O >> $PS
 echo -151 58 1964 | gmt pstext -J$J -R$R -F+a60+f9p -D0/0 -K -O >> $PS
 echo -155 55.5 1938 | gmt pstext -J$J -R$R -F+a30+f9p -D0/0 -K -O >> $PS
 echo -161.5 55 1948 | gmt pstext -J$J -R$R -F+a0+f9p -D0/0 -K -O >> $PS
